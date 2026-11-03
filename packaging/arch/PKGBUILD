@@ -1,0 +1,37 @@
+# Maintainer: niruxx <perezkyle98 at protonmail dot com>
+pkgname=gnome-shell-extension-orbit
+pkgver=0.4.0
+pkgrel=1
+pkgdesc="Orbit Shell: dock, dynamic top bar, app launcher, tray icons, glass effects and layouts for GNOME Shell"
+arch=('any')
+url="https://github.com/niruxx/Orbit"
+license=('GPL-3.0-or-later')
+depends=('gnome-shell>=1:48')
+optdepends=('gnome-shell-extensions: User Themes extension, used by Shell themes')
+# The old "orbit" package bundled a GTK app with this extension.
+conflicts=('orbit')
+install=orbit.install
+# Local builds use the tarball from `make dist`. For a release, point this at
+# "$url/archive/v$pkgver.tar.gz" and update the checksum.
+source=("orbit-shell-$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+_uuid=orbit-dock@niruxx.github.io
+
+check() {
+  cd "orbit-shell-$pkgver"
+  glib-compile-schemas --strict --dry-run "extension/$_uuid/schemas"
+}
+
+package() {
+  cd "orbit-shell-$pkgver"
+  # System extensions must not ship a schemas/ dir; the schema goes to the
+  # global dir and glib2's pacman hook compiles it.
+  local extdir="$pkgdir/usr/share/gnome-shell/extensions/$_uuid"
+  install -d "$extdir"
+  install -m644 "extension/$_uuid"/{metadata.json,stylesheet.css} "extension/$_uuid"/*.js "$extdir/"
+  install -Dm644 "extension/$_uuid/schemas/org.gnome.shell.extensions.orbit-dock.gschema.xml" \
+    -t "$pkgdir/usr/share/glib-2.0/schemas/"
+  install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

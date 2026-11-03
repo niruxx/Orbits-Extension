@@ -1,0 +1,10 @@
+post_install() {
+  echo ">>> Orbit Shell: log out and back in once so GNOME Shell sees the extension, then:"
+  echo ">>>   gnome-extensions enable orbit-dock@niruxx.github.io"
+  echo ">>> Settings: GNOME Extensions app → Orbit Shell, or"
+  echo ">>>   gnome-extensions prefs orbit-dock@niruxx.github.io"
+}
+
+post_upgrade() {
+  echo ">>> Orbit Shell: log out and back in to load the updated extension."
+}

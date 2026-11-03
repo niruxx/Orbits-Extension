@@ -1,0 +1,208 @@
+/* Background colour, opacity and radius are set inline from settings. */
+.orbit-dock {
+  padding: 6px;
+  spacing: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.orbit-dock-box {
+  spacing: 2px;
+}
+
+.orbit-dock .overview-tile.orbit-dock-app,
+.orbit-dock-show-apps {
+  margin: 0;
+  padding: 6px;
+  border-radius: 14px;
+  background: none;
+  box-shadow: none;
+  border: none;
+  transition-duration: 100ms;
+}
+
+.orbit-dock .overview-tile.orbit-dock-app .overview-icon {
+  padding: 0;
+  background: none;
+}
+
+.orbit-dock .overview-tile.orbit-dock-app:hover,
+.orbit-dock-show-apps:hover {
+  background-color: rgba(255, 255, 255, 0.10);
+}
+
+.orbit-dock .overview-tile.orbit-dock-app:active,
+.orbit-dock .overview-tile.orbit-dock-app:checked,
+.orbit-dock-show-apps:active,
+.orbit-dock-show-apps:checked {
+  background-color: rgba(255, 255, 255, 0.16);
+}
+
+.orbit-dock .overview-tile.orbit-dock-app.orbit-focused {
+  background-color: rgba(255, 255, 255, 0.07);
+}
+
+.orbit-dock-show-apps-icon {
+  color: #fafafb;
+}
+
+/* Running indicators */
+.orbit-dock-indicator {
+  spacing: 3px;
+}
+/* Never use negative margins here: St overflows the size request. The
+   indicator is nudged into the tile padding with a translation in dock.js. */
+
+.orbit-dock-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 99px;
+  background-color: rgba(255, 255, 255, 0.85);
+}
+
+.orbit-focused .orbit-dock-dot,
+.orbit-focused .orbit-dock-line {
+  background-color: -st-accent-color;
+}
+
+.orbit-dock-line {
+  border-radius: 99px;
+  background-color: rgba(255, 255, 255, 0.85);
+}
+.orbit-dock-indicator.orbit-bottom .orbit-dock-line,
+.orbit-dock-indicator.orbit-top .orbit-dock-line {
+  width: 18px;
+  height: 3px;
+}
+.orbit-dock-indicator.orbit-left .orbit-dock-line,
+.orbit-dock-indicator.orbit-right .orbit-dock-line {
+  width: 3px;
+  height: 18px;
+}
+
+/* Separator between pinned and running apps */
+.orbit-dock-separator {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+.orbit-dock-separator.orbit-horizontal {
+  width: 1px;
+  margin: 8px 4px;
+}
+.orbit-dock-separator.orbit-vertical {
+  height: 1px;
+  margin: 4px 8px;
+}
+
+/* ---- Glass ------------------------------------------------------------- */
+.orbit-dock.orbit-glass-highlight {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10);
+}
+
+/* ---- Top bar ----------------------------------------------------------- */
+/* Orbit draws the bar's background itself (topbar.js). */
+#panel.orbit-top-bar {
+  background-color: transparent;
+}
+/* Keep labels and icons readable when the bar is see-through. */
+#panel.orbit-transparent .panel-button {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+  icon-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+}
+
+.orbit-app-button .panel-status-menu-box {
+  spacing: 6px;
+}
+
+/* ---- Tray (bottom-left) ------------------------------------------------ */
+.orbit-tray {
+  padding: 4px 6px;
+  spacing: 2px;
+  border-radius: 14px;
+  background-color: rgba(30, 30, 34, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.orbit-tray .orbit-tray-item {
+  padding: 4px 6px;
+  border-radius: 10px;
+}
+.orbit-tray .orbit-tray-item:hover {
+  background-color: rgba(255, 255, 255, 0.10);
+}
+
+/* ---- Launcher ---------------------------------------------------------- */
+.orbit-launcher {
+  border-radius: 18px;
+  padding: 12px;
+  spacing: 10px;
+  color: #f2f2f4;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+.orbit-launcher-header {
+  spacing: 10px;
+  padding: 2px 4px;
+}
+.orbit-launcher-user {
+  font-weight: bold;
+}
+.orbit-launcher-search {
+  border-radius: 999px;
+  padding: 6px 12px;
+}
+.orbit-launcher-body {
+  spacing: 8px;
+}
+.orbit-launcher-categories {
+  width: 190px;
+  spacing: 2px;
+  padding-right: 4px;
+}
+.orbit-launcher-category,
+.orbit-launcher-app {
+  border-radius: 10px;
+  padding: 6px 10px;
+}
+.orbit-launcher-category:hover,
+.orbit-launcher-category:focus,
+.orbit-launcher-app:hover,
+.orbit-launcher-app:focus {
+  background-color: rgba(255, 255, 255, 0.10);
+}
+.orbit-launcher-category:checked {
+  background-color: st-transparentize(-st-accent-color, 0.55);
+}
+.orbit-launcher-iconlabel,
+.orbit-launcher-app-box {
+  spacing: 10px;
+}
+.orbit-launcher-apps {
+  spacing: 1px;
+}
+.orbit-launcher-app-name {
+  font-weight: 600;
+}
+.orbit-launcher-app-desc {
+  font-size: 0.85em;
+  color: rgba(242, 242, 244, 0.65);
+}
+.orbit-launcher-empty {
+  padding: 24px;
+  color: rgba(242, 242, 244, 0.6);
+}
+.orbit-launcher-power {
+  spacing: 4px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.orbit-launcher-power-label {
+  padding-right: 8px;
+  color: rgba(242, 242, 244, 0.7);
+}
+.orbit-launcher-power-button {
+  border-radius: 999px;
+  padding: 8px;
+}
+.orbit-launcher-power-button:hover,
+.orbit-launcher-power-button:focus {
+  background-color: rgba(255, 255, 255, 0.12);
+}

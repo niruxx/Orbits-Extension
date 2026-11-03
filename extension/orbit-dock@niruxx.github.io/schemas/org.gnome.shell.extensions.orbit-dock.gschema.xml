@@ -1,0 +1,280 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="orbit">
+  <schema id="org.gnome.shell.extensions.orbit-dock" path="/org/gnome/shell/extensions/orbit-dock/">
+    <!-- Placement -->
+    <key name="dock-position" type="s">
+      <choices><choice value="bottom"/><choice value="left"/><choice value="right"/><choice value="top"/></choices>
+      <default>'bottom'</default>
+      <summary>Screen edge the dock is attached to</summary>
+    </key>
+    <key name="multi-monitor" type="b">
+      <default>false</default>
+      <summary>Show a dock on every monitor</summary>
+    </key>
+    <key name="extend-to-edge" type="b">
+      <default>false</default>
+      <summary>Stretch the dock across the full edge (panel mode)</summary>
+    </key>
+    <key name="margin" type="i">
+      <range min="0" max="64"/>
+      <default>8</default>
+      <summary>Gap between the dock and the screen edge</summary>
+    </key>
+
+    <!-- Behaviour -->
+    <key name="dock-mode" type="s">
+      <choices><choice value="fixed"/><choice value="autohide"/><choice value="intellihide"/></choices>
+      <default>'intellihide'</default>
+      <summary>fixed reserves screen space; autohide hides until the pointer pushes the edge; intellihide hides only when a window overlaps</summary>
+    </key>
+    <key name="intellihide-scope" type="s">
+      <choices><choice value="all-windows"/><choice value="focus-app"/><choice value="maximized"/></choices>
+      <default>'all-windows'</default>
+      <summary>Which windows make an intellihide dock get out of the way</summary>
+    </key>
+    <key name="pressure-threshold" type="i">
+      <range min="0" max="1000"/>
+      <default>100</default>
+      <summary>Pointer pressure (px) at the edge needed to reveal a hidden dock</summary>
+    </key>
+    <key name="hide-delay" type="i">
+      <range min="0" max="5000"/>
+      <default>400</default>
+      <summary>Delay in ms before hiding after the pointer leaves</summary>
+    </key>
+    <key name="animation-time" type="i">
+      <range min="0" max="2000"/>
+      <default>200</default>
+      <summary>Show/hide animation duration in ms</summary>
+    </key>
+    <key name="hide-overview-dash" type="b">
+      <default>true</default>
+      <summary>Hide the stock dash in the Activities overview</summary>
+    </key>
+
+    <!-- Content -->
+    <key name="icon-size" type="i">
+      <range min="16" max="128"/>
+      <default>48</default>
+      <summary>Maximum icon size (shrinks automatically when the dock is full)</summary>
+    </key>
+    <key name="show-favorites" type="b">
+      <default>true</default>
+      <summary>Show pinned (favorite) applications</summary>
+    </key>
+    <key name="show-running" type="b">
+      <default>true</default>
+      <summary>Show running applications</summary>
+    </key>
+    <key name="show-apps-button" type="b">
+      <default>true</default>
+      <summary>Show the "Show Applications" button</summary>
+    </key>
+    <key name="show-apps-position" type="s">
+      <choices><choice value="start"/><choice value="end"/><choice value="after-favorites"/></choices>
+      <default>'end'</default>
+      <summary>Where the "Show Applications" button sits: start, end, or between pinned and running apps</summary>
+    </key>
+    <key name="isolate-workspaces" type="b">
+      <default>false</default>
+      <summary>Only count windows on the current workspace</summary>
+    </key>
+    <key name="isolate-monitors" type="b">
+      <default>false</default>
+      <summary>Only count windows on the dock's monitor</summary>
+    </key>
+
+    <!-- Actions -->
+    <key name="click-action" type="s">
+      <choices><choice value="focus-or-minimize"/><choice value="cycle-windows"/><choice value="focus-or-minimize-all"/><choice value="launch"/></choices>
+      <default>'focus-or-minimize'</default>
+      <summary>What a left click on a running app does</summary>
+    </key>
+    <key name="middle-click-action" type="s">
+      <choices><choice value="new-window"/><choice value="minimize"/><choice value="quit"/><choice value="none"/></choices>
+      <default>'new-window'</default>
+      <summary>What a middle click on an app does</summary>
+    </key>
+    <key name="scroll-action" type="s">
+      <choices><choice value="cycle-windows"/><choice value="switch-workspace"/><choice value="none"/></choices>
+      <default>'cycle-windows'</default>
+      <summary>What scrolling over the dock does</summary>
+    </key>
+
+    <!-- Appearance -->
+    <key name="indicator-style" type="s">
+      <choices><choice value="dots"/><choice value="dot"/><choice value="line"/><choice value="none"/></choices>
+      <default>'dots'</default>
+      <summary>Running indicator style (dots = one per window, up to 4)</summary>
+    </key>
+    <key name="background-opacity" type="d">
+      <range min="0.0" max="1.0"/>
+      <default>0.8</default>
+      <summary>Dock background opacity</summary>
+    </key>
+    <key name="use-custom-color" type="b">
+      <default>false</default>
+      <summary>Use background-color instead of the theme colour</summary>
+    </key>
+    <key name="background-color" type="s">
+      <default>'#242428'</default>
+      <summary>Custom dock background colour (#rrggbb)</summary>
+    </key>
+    <key name="border-radius" type="i">
+      <range min="0" max="64"/>
+      <default>22</default>
+      <summary>Dock corner radius in px</summary>
+    </key>
+    <!-- Top bar -->
+    <key name="top-bar-style" type="s">
+      <choices><choice value="default"/><choice value="dynamic"/><choice value="translucent"/></choices>
+      <default>'default'</default>
+      <summary>default = theme look; dynamic = transparent until a window touches it; translucent = always use the custom opacity</summary>
+    </key>
+    <key name="top-bar-dynamic-trigger" type="s">
+      <choices><choice value="touching"/><choice value="maximized"/></choices>
+      <default>'touching'</default>
+      <summary>What makes a dynamic top bar turn solid</summary>
+    </key>
+    <key name="top-bar-solid-opacity" type="d">
+      <range min="0.0" max="1.0"/>
+      <default>1.0</default>
+      <summary>Top bar opacity when solid</summary>
+    </key>
+    <key name="top-bar-transparent-opacity" type="d">
+      <range min="0.0" max="1.0"/>
+      <default>0.0</default>
+      <summary>Top bar opacity when transparent (dynamic mode) or always (translucent mode)</summary>
+    </key>
+    <key name="top-bar-use-custom-color" type="b">
+      <default>false</default>
+      <summary>Use top-bar-color instead of black</summary>
+    </key>
+    <key name="top-bar-color" type="s">
+      <default>'#000000'</default>
+      <summary>Top bar background colour (#rrggbb)</summary>
+    </key>
+    <key name="top-bar-floating" type="b">
+      <default>false</default>
+      <summary>Draw the top bar as a floating rounded bar while it is transparent</summary>
+    </key>
+    <key name="top-bar-radius" type="i">
+      <range min="0" max="32"/>
+      <default>12</default>
+      <summary>Corner radius of the floating top bar</summary>
+    </key>
+    <key name="top-bar-transition" type="i">
+      <range min="0" max="2000"/>
+      <default>250</default>
+      <summary>Fade duration in ms when the top bar changes state</summary>
+    </key>
+    <key name="top-bar-hide-activities" type="b">
+      <default>false</default>
+      <summary>Hide the Activities / workspace button</summary>
+    </key>
+    <key name="top-bar-clock-position" type="s">
+      <choices><choice value="center"/><choice value="left"/><choice value="right"/></choices>
+      <default>'center'</default>
+      <summary>Where the clock sits in the top bar</summary>
+    </key>
+
+    <!-- Launcher and overview -->
+    <key name="super-key-action" type="s">
+      <choices><choice value="overview"/><choice value="launcher"/><choice value="none"/></choices>
+      <default>'overview'</default>
+      <summary>What the Super key opens</summary>
+    </key>
+    <key name="activities-action" type="s">
+      <choices><choice value="overview"/><choice value="launcher"/></choices>
+      <default>'overview'</default>
+      <summary>What clicking Activities opens</summary>
+    </key>
+    <key name="show-apps-action" type="s">
+      <choices><choice value="overview"/><choice value="launcher"/></choices>
+      <default>'overview'</default>
+      <summary>What the dock's applications button opens</summary>
+    </key>
+    <key name="skip-startup-overview" type="b">
+      <default>false</default>
+      <summary>Go straight to the desktop after logging in</summary>
+    </key>
+    <key name="launcher-icon-size" type="i">
+      <range min="16" max="64"/>
+      <default>32</default>
+      <summary>App icon size in the launcher</summary>
+    </key>
+    <key name="launcher-show-descriptions" type="b">
+      <default>true</default>
+      <summary>Show app descriptions under names in the launcher</summary>
+    </key>
+    <key name="launcher-show-power" type="b">
+      <default>true</default>
+      <summary>Show lock/log out/suspend/restart/power off buttons in the launcher</summary>
+    </key>
+    <key name="launcher-opacity" type="d">
+      <range min="0.0" max="1.0"/>
+      <default>0.92</default>
+      <summary>Launcher background opacity</summary>
+    </key>
+
+    <!-- Glass / frost -->
+    <key name="glass-dock" type="b">
+      <default>false</default>
+      <summary>Frosted glass behind the dock</summary>
+    </key>
+    <key name="glass-top-bar" type="b">
+      <default>false</default>
+      <summary>Frosted glass behind the top bar</summary>
+    </key>
+    <key name="glass-launcher" type="b">
+      <default>false</default>
+      <summary>Frosted glass behind the launcher</summary>
+    </key>
+    <key name="glass-blur-radius" type="i">
+      <range min="0" max="100"/>
+      <default>30</default>
+      <summary>Blur strength in px</summary>
+    </key>
+    <key name="glass-brightness" type="d">
+      <range min="0.0" max="1.0"/>
+      <default>0.75</default>
+      <summary>Brightness of the blurred background</summary>
+    </key>
+    <key name="glass-highlight" type="b">
+      <default>true</default>
+      <summary>Add a light frosted edge highlight to glass surfaces</summary>
+    </key>
+    <!-- Personalization -->
+    <key name="tray-enabled" type="b">
+      <default>false</default>
+      <summary>Show AppIndicator / KStatusNotifier tray icons</summary>
+    </key>
+    <key name="tray-position" type="s">
+      <choices><choice value="top-bar"/><choice value="bottom-left"/></choices>
+      <default>'top-bar'</default>
+      <summary>Where tray icons appear</summary>
+    </key>
+    <key name="tray-icon-size" type="i">
+      <range min="12" max="48"/>
+      <default>16</default>
+      <summary>Tray icon size</summary>
+    </key>
+    <key name="app-button-enabled" type="b">
+      <default>false</default>
+      <summary>Show the focused application in the top bar</summary>
+    </key>
+    <key name="app-button-position" type="s">
+      <choices><choice value="left"/><choice value="center"/><choice value="right"/></choices>
+      <default>'left'</default>
+      <summary>Where the focused-app button sits in the top bar</summary>
+    </key>
+    <key name="app-button-show-title" type="b">
+      <default>false</default>
+      <summary>Show the window title instead of the app name</summary>
+    </key>
+    <key name="app-button-show-icon" type="b">
+      <default>true</default>
+      <summary>Show the app icon on the focused-app button</summary>
+    </key>
+  </schema>
+</schemalist>
