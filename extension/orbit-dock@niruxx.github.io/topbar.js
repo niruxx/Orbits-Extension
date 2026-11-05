@@ -17,7 +17,7 @@ export const TOP_BAR_KEYS = new Set([
     'top-bar-style', 'top-bar-dynamic-trigger', 'top-bar-solid-opacity',
     'top-bar-transparent-opacity', 'top-bar-use-custom-color', 'top-bar-color',
     'top-bar-floating', 'top-bar-radius', 'top-bar-transition',
-    'top-bar-hide-activities', 'top-bar-clock-position',
+    'top-bar-hide-activities', 'top-bar-clock-position', 'top-bar-position',
     'glass-top-bar', 'glass-blur-radius', 'glass-brightness', 'glass-highlight',
 ]);
 
@@ -38,6 +38,7 @@ function readConfig(s) {
         transition: s.get_int('top-bar-transition'),
         hideActivities: s.get_boolean('top-bar-hide-activities'),
         clockPosition: s.get_string('top-bar-clock-position'),
+        atBottom: s.get_string('top-bar-position') === 'bottom',
         glass: s.get_boolean('glass-top-bar'),
         blur: s.get_int('glass-blur-radius'),
         brightness: s.get_double('glass-brightness'),
@@ -71,6 +72,7 @@ export class TopBarManager {
 
         this._applyActivities(c.hideActivities);
         this._applyClock(c.clockPosition);
+        this._applyPosition(c.atBottom);
 
         // Default look without glass: leave the theme alone.
         if (c.style === 'default' && !c.glass)
@@ -130,13 +132,17 @@ export class TopBarManager {
         const [, py] = panelBox.get_transformed_position();
         const bottom = py + panelBox.height;
         const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor;
+        const slack = TOUCH_SLACK * scale;
         const primary = Main.layoutManager.primaryIndex;
 
         return visibleWorkspaceWindows()
             .filter(w => w.get_monitor() === primary)
-            .some(w => c.trigger === 'maximized'
-                ? isWindowMaximized(w)
-                : w.get_frame_rect().y <= bottom + TOUCH_SLACK * scale);
+            .some(w => {
+                if (c.trigger === 'maximized')
+                    return isWindowMaximized(w);
+                const r = w.get_frame_rect();
+                return c.atBottom ? r.y + r.height >= py - slack : r.y <= bottom + slack;
+            });
     }
 
     _update(animate = true) {
@@ -197,6 +203,30 @@ export class TopBarManager {
 
     // ---- layout tweaks ---------------------------------------------------
 
+    /** Move GNOME's whole top bar to the bottom edge (or back). The layout
+     * manager re-places it on monitor changes, so follow its allocation. */
+    _applyPosition(atBottom) {
+        const panelBox = Main.layoutManager.panelBox;
+        Main.layoutManager.disconnectObject(this._positionTag ??= {});
+        panelBox.disconnectObject(this._positionTag);
+        const place = () => {
+            const m = Main.layoutManager.primaryMonitor;
+            if (!m)
+                return;
+            const y = atBottom ? m.y + m.height - panelBox.height : m.y;
+            if (panelBox.x !== m.x || panelBox.y !== y)
+                panelBox.set_position(m.x, y);
+        };
+        place();
+        if (atBottom) {
+            panelBox.connectObject('notify::height', place, 'notify::y', place, this._positionTag);
+            Main.layoutManager.connectObject('monitors-changed', place, this._positionTag);
+            Main.panel.add_style_class_name('orbit-bottom-bar');
+        } else {
+            Main.panel.remove_style_class_name('orbit-bottom-bar');
+        }
+    }
+
     _applyActivities(hide) {
         const activities = Main.panel.statusArea.activities;
         if (!activities)
@@ -250,5 +280,6 @@ export class TopBarManager {
         this._teardown();
         this._applyActivities(false);
         this._applyClock('center');
+        this._applyPosition(false);
     }
 }

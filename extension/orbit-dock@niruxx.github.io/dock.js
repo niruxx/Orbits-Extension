@@ -96,6 +96,10 @@ function readConfig(settings) {
         color: settings.get_string('background-color'),
         radius: settings.get_int('border-radius'),
         showAppsAction: settings.get_string('show-apps-action'),
+        inPanel: settings.get_boolean('dock-in-panel'),
+        panelAtBottom: settings.get_string('top-bar-position') === 'bottom',
+        taskbarAlignment: settings.get_string('taskbar-alignment'),
+        taskbarIconSize: settings.get_int('taskbar-icon-size'),
         glass: settings.get_boolean('glass-dock'),
         blur: settings.get_int('glass-blur-radius'),
         brightness: settings.get_double('glass-brightness'),
@@ -203,10 +207,13 @@ class Dock {
         this._manager = manager;
         this.config = manager.config;
         this.monitorIndex = monitorIndex;
-        this.position = this.config.position;
+        // Taskbar mode: the apps live inside GNOME's top bar, wherever it is.
+        this.inPanel = this.config.inPanel;
+        this.position = this.inPanel
+            ? (this.config.panelAtBottom ? 'bottom' : 'top') : this.config.position;
         this.side = SIDES[this.position] ?? St.Side.BOTTOM;
         this.horizontal = this.position === 'bottom' || this.position === 'top';
-        this.iconSize = this.config.iconSize;
+        this.iconSize = this.inPanel ? this.config.taskbarIconSize : this.config.iconSize;
 
         this._icons = new Map();
         this._runningOrder = [];
@@ -220,9 +227,13 @@ class Dock {
         this._appSystem = Shell.AppSystem.get_default();
         this._tracker = Shell.WindowTracker.get_default();
 
-        this._buildActors();
+        if (this.inPanel)
+            this._buildPanelActors();
+        else
+            this._buildActors();
         this._connectSignals();
-        this._setupBarrier();
+        if (!this.inPanel)
+            this._setupBarrier();
 
         this._redisplay();
         this._updateVisibility(false);
@@ -334,6 +345,47 @@ class Dock {
         // Content size changes (apps opening/closing, icons getting styled)
         // re-allocate the container; re-centre it when that happens.
         this._container.connect('notify::allocation', () => this._queueGeometry());
+    }
+
+    /** Taskbar mode: start button + app icons inside GNOME's top bar. */
+    _buildPanelActors() {
+        this._background = new St.BoxLayout({
+            style_class: `orbit-taskbar orbit-${this.position}`,
+            reactive: true,
+            y_align: Clutter.ActorAlign.FILL,
+        });
+        this._box = new St.BoxLayout({style_class: 'orbit-dock-box orbit-taskbar-box'});
+        this._box._delegate = this;
+
+        if (this.config.showAppsButton)
+            this._showAppsButton = this._createShowAppsButton();
+        const appsPos = this.config.showAppsPosition;
+        if (this._showAppsButton && appsPos === 'start')
+            this._background.add_child(this._showAppsButton);
+        this._background.add_child(this._box);
+        if (this._showAppsButton && appsPos === 'after-favorites')
+            this._box.add_child(this._showAppsButton);
+        else if (this._showAppsButton && appsPos !== 'start')
+            this._background.add_child(this._showAppsButton);
+
+        const target = this.config.taskbarAlignment === 'center'
+            ? Main.panel._centerBox : Main.panel._leftBox;
+        if (target === Main.panel._centerBox)
+            target.insert_child_at_index(this._background, 0);
+        else
+            target.add_child(this._background);
+
+        this._label = new St.Label({style_class: 'dash-label orbit-dock-label'});
+        this._label.hide();
+        Main.layoutManager.addTopChrome(this._label);
+
+        this._background.connect('destroy', () => {
+            this._destroyed = true;
+            laterRemove(this._redisplayLater);
+            laterRemove(this._geometryLater);
+            this._redisplayLater = this._geometryLater = 0;
+        });
+        this._background.connect('scroll-event', (_a, event) => this._onDockScroll(event));
     }
 
     _marginStyle() {
@@ -604,7 +656,7 @@ class Dock {
         ordered.forEach((actor, i) => this._box.set_child_at_index(actor, i));
         this._icons.forEach(icon => icon.updateIndicator());
 
-        this._applyIconSize(this.config.iconSize);
+        this._applyIconSize(this.inPanel ? this.config.taskbarIconSize : this.config.iconSize);
         this._queueGeometry();
     }
 
@@ -656,24 +708,25 @@ class Dock {
     }
 
     _availableArea(monitor) {
-        // Leave room for the top bar on the primary monitor for side/top docks.
-        const panelOffset = this.monitorIndex === Main.layoutManager.primaryIndex &&
+        // Leave room for the top bar on the primary monitor (it may be at the
+        // top or, in taskbar layouts, at the bottom).
+        const panel = this.monitorIndex === Main.layoutManager.primaryIndex &&
             Main.panel.visible ? Main.panel.height : 0;
+        const top = this.config.panelAtBottom ? 0 : panel;
+        const bottom = this.config.panelAtBottom ? panel : 0;
         if (this.horizontal) {
-            return {
-                x: monitor.x, width: monitor.width,
-                y: monitor.y + (this.position === 'top' ? panelOffset : 0),
-                height: monitor.height - (this.position === 'top' ? panelOffset : 0),
-            };
+            const t = this.position === 'top' ? top : 0;
+            const b = this.position === 'bottom' ? bottom : 0;
+            return {x: monitor.x, width: monitor.width, y: monitor.y + t, height: monitor.height - t - b};
         }
         return {
             x: monitor.x, width: monitor.width,
-            y: monitor.y + panelOffset, height: monitor.height - panelOffset,
+            y: monitor.y + top, height: monitor.height - top - bottom,
         };
     }
 
     _updateGeometry(shrinkPass = false) {
-        if (this._destroyed)
+        if (this._destroyed || this.inPanel)
             return;
         const monitor = Main.layoutManager.monitors[this.monitorIndex];
         if (!monitor)
@@ -760,7 +813,7 @@ class Dock {
     }
 
     _queueIntellihide() {
-        if (this.config.mode !== 'intellihide' || this._intellihideId)
+        if (this.inPanel || this.config.mode !== 'intellihide' || this._intellihideId)
             return;
         this._intellihideId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 60, () => {
             this._intellihideId = 0;
@@ -807,6 +860,8 @@ class Dock {
     }
 
     _updateVisibility(animate = true) {
+        if (this.inPanel)
+            return; // the taskbar is always shown with the bar
         const show = this._shouldShow();
         if (show === this._shown)
             return;
@@ -1124,7 +1179,7 @@ class Dock {
 
         this._icons.clear();
         this._label.destroy();
-        this._container.destroy();
+        (this._container ?? this._background).destroy();
     }
 }
 
@@ -1140,7 +1195,7 @@ export class DockManager {
 
         this.settings.connectObject('changed', (_s, key) => {
             this.config = readConfig(settings);
-            if (NON_DOCK_KEY.test(key))
+            if (NON_DOCK_KEY.test(key) && key !== 'top-bar-position')
                 return;
             if (key === 'hide-overview-dash')
                 this._syncOverviewDash();
@@ -1171,7 +1226,7 @@ export class DockManager {
     _build() {
         this._destroyDocks();
         const monitors = Main.layoutManager.monitors;
-        const indices = this.config.multiMonitor
+        const indices = this.config.multiMonitor && !this.config.inPanel
             ? monitors.map((_m, i) => i)
             : [Main.layoutManager.primaryIndex];
         for (const i of indices) {

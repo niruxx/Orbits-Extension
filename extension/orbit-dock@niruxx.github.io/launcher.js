@@ -366,7 +366,11 @@ export class Launcher {
         } else {
             const panel = Main.layoutManager.panelBox;
             x = monitor.x + gap;
-            y = (panel.visible ? panel.y + panel.height : monitor.y) + gap;
+            const panelAtBottom = panel.visible && panel.y > monitor.y + monitor.height / 2;
+            if (panelAtBottom)
+                y = panel.y - height - gap; // above a bottom (taskbar) bar
+            else
+                y = (panel.visible ? panel.y + panel.height : monitor.y) + gap;
         }
         x = Math.clamp(Math.round(x), monitor.x + gap, monitor.x + monitor.width - width - gap) - monitor.x;
         y = Math.clamp(Math.round(y), monitor.y + gap, monitor.y + monitor.height - height - gap) - monitor.y;

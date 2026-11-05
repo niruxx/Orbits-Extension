@@ -41,15 +41,29 @@ const PRESETS = [
         wm: {'button-layout': 'close,minimize,maximize:appmenu'},
     },
     {
-        title: 'Windows',
-        description: 'Taskbar along the bottom with the start button first; Super opens a ' +
-            'start-menu style launcher. Window buttons on the right.',
-        preview: {topBar: 'solid', dock: 'bottom-panel', startButton: 'start'},
+        title: 'Windows 10',
+        description: 'One taskbar along the bottom: start button and apps on the left, tray and ' +
+            'clock on the right. Super opens a start-menu style launcher.',
+        preview: {topBar: 'taskbar', dock: 'taskbar', startButton: 'start'},
         orbit: {
-            'dock-position': 'bottom', 'extend-to-edge': true, 'dock-mode': 'fixed',
-            'icon-size': 32, 'show-apps-button': true, 'show-apps-position': 'start',
-            'show-apps-action': 'launcher', 'indicator-style': 'line', 'background-opacity': 0.92,
-            'hide-overview-dash': true,
+            'top-bar-position': 'bottom', 'dock-in-panel': true, 'taskbar-alignment': 'left',
+            'show-apps-button': true, 'show-apps-position': 'start', 'show-apps-action': 'launcher',
+            'indicator-style': 'line', 'hide-overview-dash': true,
+            'top-bar-style': 'default', 'top-bar-hide-activities': true, 'top-bar-clock-position': 'right',
+            'tray-enabled': true, 'tray-position': 'top-bar',
+            'super-key-action': 'launcher', 'activities-action': 'launcher', 'skip-startup-overview': true,
+        },
+        wm: {'button-layout': 'appmenu:minimize,maximize,close'},
+    },
+    {
+        title: 'Windows 11',
+        description: 'One taskbar along the bottom with the start button and apps centred, tray ' +
+            'and clock on the right. Super opens the launcher.',
+        preview: {topBar: 'taskbar', dock: 'taskbar', startButton: 'start', centered: true},
+        orbit: {
+            'top-bar-position': 'bottom', 'dock-in-panel': true, 'taskbar-alignment': 'center',
+            'show-apps-button': true, 'show-apps-position': 'start', 'show-apps-action': 'launcher',
+            'indicator-style': 'line', 'hide-overview-dash': true,
             'top-bar-style': 'default', 'top-bar-hide-activities': true, 'top-bar-clock-position': 'right',
             'tray-enabled': true, 'tray-position': 'top-bar',
             'super-key-action': 'launcher', 'activities-action': 'launcher', 'skip-startup-overview': true,
@@ -162,21 +176,24 @@ function drawPreview(cr, w, h, p) {
     cr.setSource(bg);
     cr.paint();
 
-    const barH = h * 0.075;
-    cr.setSourceRGBA(0.05, 0.05, 0.07, p.topBar === 'solid' ? 0.95 : 0.35);
-    cr.rectangle(0, 0, w, barH);
-    cr.fill();
-    cr.setSourceRGBA(1, 1, 1, 0.85);
-    rounded(cr, w / 2 - 14, barH * 0.35, 28, barH * 0.3, 2);
-    cr.fill();
-    if (p.appName) {
-        rounded(cr, p.dock === 'left-panel' ? 30 : 10, barH * 0.35, 30, barH * 0.3, 2);
+    const taskbar = p.topBar === 'taskbar';
+    const barH = taskbar ? 0 : h * 0.075;
+    if (!taskbar) {
+        cr.setSourceRGBA(0.05, 0.05, 0.07, p.topBar === 'solid' ? 0.95 : 0.35);
+        cr.rectangle(0, 0, w, barH);
         cr.fill();
-    }
-    cr.setSourceRGBA(1, 1, 1, 0.7);
-    for (let i = 0; i < 3; i++) {
-        cr.arc(w - 10 - i * 9, barH / 2, 2.4, 0, 2 * Math.PI);
+        cr.setSourceRGBA(1, 1, 1, 0.85);
+        rounded(cr, w / 2 - 14, barH * 0.35, 28, barH * 0.3, 2);
         cr.fill();
+        if (p.appName) {
+            rounded(cr, p.dock === 'left-panel' ? 30 : 10, barH * 0.35, 30, barH * 0.3, 2);
+            cr.fill();
+        }
+        cr.setSourceRGBA(1, 1, 1, 0.7);
+        for (let i = 0; i < 3; i++) {
+            cr.arc(w - 10 - i * 9, barH / 2, 2.4, 0, 2 * Math.PI);
+            cr.fill();
+        }
     }
 
     // a window
@@ -225,6 +242,26 @@ function drawPreview(cr, w, h, p) {
             x0 += icon + gap * 2;
         }
         icons(cr, x0, h - ph + 4, n, icon, gap, false);
+    } else if (p.dock === 'taskbar') {
+        // single bottom bar: start + apps (left or centred), tray dots + clock right
+        const ph = h * 0.1;
+        const ty = h - ph;
+        cr.setSourceRGBA(0.06, 0.06, 0.08, 0.95);
+        cr.rectangle(0, ty, w, ph);
+        cr.fill();
+        const s = ph * 0.62, g = s * 0.3, count = n + 1;
+        const total = count * s + (count - 1) * g;
+        let x0 = p.centered ? (w - total) / 2 : 8;
+        startButton(cr, x0, ty + (ph - s) / 2, s);
+        x0 += s + g;
+        icons(cr, x0, ty + (ph - s) / 2, n, s, g, false);
+        cr.setSourceRGBA(1, 1, 1, 0.8);
+        for (let i = 0; i < 3; i++) {
+            cr.arc(w - 46 - i * 9, ty + ph / 2, 2.2, 0, 2 * Math.PI);
+            cr.fill();
+        }
+        rounded(cr, w - 34, ty + ph * 0.38, 26, ph * 0.24, 2);
+        cr.fill();
     } else if (p.dock === 'left-panel') {
         cr.setSourceRGBA(0.08, 0.08, 0.10, 0.9);
         cr.rectangle(0, barH, dockLeft, h - barH);

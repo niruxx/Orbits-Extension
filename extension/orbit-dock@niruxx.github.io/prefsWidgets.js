@@ -36,6 +36,8 @@ export const CHOICES = {
     'top-bar-dynamic-trigger': [['touching', 'A window touches the bar'],
         ['maximized', 'A window is maximized']],
     'top-bar-clock-position': [['center', 'Center'], ['left', 'Left'], ['right', 'Right']],
+    'top-bar-position': [['top', 'Top'], ['bottom', 'Bottom']],
+    'taskbar-alignment': [['left', 'Left (Windows 10)'], ['center', 'Centered (Windows 11)']],
     // launcher
     'super-key-action': [['overview', 'Activities overview'], ['launcher', 'Orbit launcher'],
         ['none', 'Nothing']],

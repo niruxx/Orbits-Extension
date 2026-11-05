@@ -206,3 +206,31 @@
 .orbit-launcher-power-button:focus {
   background-color: rgba(255, 255, 255, 0.12);
 }
+
+/* ---- Taskbar (dock inside the top bar) -------------------------------- */
+.orbit-taskbar {
+  spacing: 2px;
+  padding: 0 4px;
+}
+.orbit-taskbar-box {
+  spacing: 2px;
+}
+.orbit-taskbar .overview-tile.orbit-dock-app,
+.orbit-taskbar .orbit-dock-show-apps {
+  margin: 2px 0;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: none;
+  box-shadow: none;
+}
+.orbit-taskbar .overview-tile.orbit-dock-app .overview-icon {
+  padding: 0;
+  background: none;
+}
+.orbit-taskbar .overview-tile.orbit-dock-app:hover,
+.orbit-taskbar .orbit-dock-show-apps:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+.orbit-taskbar .overview-tile.orbit-dock-app.orbit-focused {
+  background-color: rgba(255, 255, 255, 0.16);
+}

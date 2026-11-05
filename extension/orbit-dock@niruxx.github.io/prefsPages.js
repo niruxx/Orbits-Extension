@@ -130,6 +130,14 @@ export function dockPage(window, settings) {
     position.add(conflictRow('Another dock is active',
         'Dash to Dock / Ubuntu Dock / Dash to Panel will fight with Orbit\'s dock.', CONFLICTING_DOCKS));
     page.add(position);
+    const taskbar = W.group('Taskbar', [
+        r.switch('dock-in-panel', 'Show apps in the top bar',
+            'One bar like Windows: the start button and app icons move into the top bar ' +
+            'and the separate dock goes away. Pair it with Top Bar → Position: Bottom.'),
+        r.combo('taskbar-alignment', 'Apps alignment'),
+        r.spin('taskbar-icon-size', 'Taskbar icon size', 16, 48, 2),
+    ]);
+    page.add(taskbar);
     page.add(W.group('Visibility', [
         r.combo('dock-mode', 'Behaviour', 'Intelligent autohide hides only when a window overlaps the dock'),
         r.combo('intellihide-scope', 'Hide for'),
@@ -206,6 +214,7 @@ export function topBarPage(window, settings) {
         r.color('top-bar-color', 'Bar colour', 'top-bar-use-custom-color', userChanged),
     ]));
     page.add(W.group('Layout', [
+        r.combo('top-bar-position', 'Position', 'Bottom gives a Windows-style taskbar'),
         r.switch('top-bar-hide-activities', 'Hide Activities button'),
         r.combo('top-bar-clock-position', 'Clock position'),
         W.switchRow(interfaceSettings, 'enable-hot-corners', 'Hot corner',

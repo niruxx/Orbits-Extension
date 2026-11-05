@@ -1,6 +1,6 @@
 # Maintainer: niruxx <perezkyle98 at protonmail dot com>
 pkgname=gnome-shell-extension-orbit
-pkgver=0.4.0
+pkgver=0.5.0
 pkgrel=1
 pkgdesc="Orbit Shell: dock, dynamic top bar, app launcher, tray icons, glass effects and layouts for GNOME Shell"
 arch=('any')

@@ -276,5 +276,25 @@
       <default>true</default>
       <summary>Show the app icon on the focused-app button</summary>
     </key>
+    <!-- Taskbar (Windows-style single bar) -->
+    <key name="top-bar-position" type="s">
+      <choices><choice value="top"/><choice value="bottom"/></choices>
+      <default>'top'</default>
+      <summary>Screen edge for GNOME's top bar</summary>
+    </key>
+    <key name="dock-in-panel" type="b">
+      <default>false</default>
+      <summary>Show the dock's apps inside the top bar (taskbar) instead of a separate dock</summary>
+    </key>
+    <key name="taskbar-alignment" type="s">
+      <choices><choice value="left"/><choice value="center"/></choices>
+      <default>'left'</default>
+      <summary>Where the taskbar's apps sit in the bar</summary>
+    </key>
+    <key name="taskbar-icon-size" type="i">
+      <range min="16" max="48"/>
+      <default>24</default>
+      <summary>App icon size in the taskbar</summary>
+    </key>
   </schema>
 </schemalist>

@@ -2,12 +2,14 @@
 
 A GNOME Shell extension that adds a dash-to-dock style dock, a dynamic top bar, a
 Plasma-style app launcher, tray icons, frosted-glass effects and one-click desktop layouts.
-Everything is configured from the extension's own settings: open **Extensions → Orbit
+It customises GNOME Shell itself; it does not manage wallpapers, GTK/icon/cursor
+themes, fonts, the login screen or the boot splash. Everything is configured from the
+extension's own settings: open **Extensions → Orbit
 Shell → Settings**, or run `gnome-extensions prefs orbit-dock@niruxx.github.io`.
 
 | Settings page | What it does |
 |---|---|
-| **Layouts** | One-click desktop layouts: GNOME, Ubuntu Unity, Windows, macOS (undo from the toast) |
+| **Layouts** | One-click desktop layouts: GNOME, Ubuntu Unity, Windows 10, Windows 11, macOS (undo from the toast) |
 | **Dock** | Position, panel mode, autohide/intellihide, content, click and scroll actions, appearance |
 | **Top Bar** | Dynamic or translucent bar, opacity, colour, floating look, glass, Activities, clock position, hot corner |
 | **Launcher** | Kicker-style app menu; choose what Super, Activities and the dock's apps button open |
@@ -45,6 +47,11 @@ Other targets:
 - Drag apps from the app grid to pin them, drag within the dock to reorder, drop on the
   apps button to unpin. Right-click gives the standard GNOME app menu.
 - Icons shrink automatically when the dock is full
+
+**Taskbar (Windows layouts)**: the top bar can move to the bottom of the screen, and the
+dock's start button and app icons can live inside it (Dock → Taskbar). Together that gives
+one Windows-style taskbar, apps left (Windows 10) or centred (Windows 11), with the tray
+and clock on the right, and no separate dock.
 
 **Top bar**: *Dynamic* keeps the bar transparent until a window touches it (or until a
 window is maximized), then fades to solid. *Translucent* always uses your opacity. Both can
@@ -86,8 +93,3 @@ extension/orbit-dock@niruxx.github.io/
 packaging/arch/       PKGBUILD
 ```
 
-## History
-
-Orbit used to ship a GTK 4 app alongside this extension. That app (wallpapers, GTK/Shell/
-icon/cursor theme store, boot splash and login screen customisation) is moving to its own
-project.
