@@ -46,7 +46,7 @@ const PRESETS = [
             'clock on the right. Super opens a start-menu style launcher.',
         preview: {topBar: 'taskbar', dock: 'taskbar', startButton: 'start'},
         orbit: {
-            'top-bar-position': 'bottom', 'dock-in-panel': true, 'taskbar-alignment': 'left',
+            'top-bar-position': 'bottom', 'dock-in-panel': true, 'taskbar-alignment': 'left', 'top-bar-height': 44, 'taskbar-icon-size': 28, 'launcher-style': 'modern',
             'show-apps-button': true, 'show-apps-position': 'start', 'show-apps-action': 'launcher',
             'indicator-style': 'line', 'hide-overview-dash': true,
             'top-bar-style': 'default', 'top-bar-hide-activities': true, 'top-bar-clock-position': 'right',
@@ -61,7 +61,23 @@ const PRESETS = [
             'and clock on the right. Super opens the launcher.',
         preview: {topBar: 'taskbar', dock: 'taskbar', startButton: 'start', centered: true},
         orbit: {
-            'top-bar-position': 'bottom', 'dock-in-panel': true, 'taskbar-alignment': 'center',
+            'top-bar-position': 'bottom', 'dock-in-panel': true, 'taskbar-alignment': 'center', 'top-bar-height': 44, 'taskbar-icon-size': 28, 'launcher-style': 'modern',
+            'show-apps-button': true, 'show-apps-position': 'start', 'show-apps-action': 'launcher',
+            'indicator-style': 'line', 'hide-overview-dash': true,
+            'top-bar-style': 'default', 'top-bar-hide-activities': true, 'top-bar-clock-position': 'right',
+            'tray-enabled': true, 'tray-position': 'top-bar',
+            'super-key-action': 'launcher', 'activities-action': 'launcher', 'skip-startup-overview': true,
+        },
+        wm: {'button-layout': 'appmenu:minimize,maximize,close'},
+    },
+    {
+        title: 'Windows XP',
+        description: 'Taskbar along the bottom with the start button first and a two-column ' +
+            'app menu: apps on the left, folders and settings on the right.',
+        preview: {topBar: 'taskbar', dock: 'taskbar', startButton: 'start', xp: true},
+        orbit: {
+            'top-bar-position': 'bottom', 'dock-in-panel': true, 'taskbar-alignment': 'left',
+            'top-bar-height': 34, 'taskbar-icon-size': 22, 'launcher-style': 'xp',
             'show-apps-button': true, 'show-apps-position': 'start', 'show-apps-action': 'launcher',
             'indicator-style': 'line', 'hide-overview-dash': true,
             'top-bar-style': 'default', 'top-bar-hide-activities': true, 'top-bar-clock-position': 'right',
@@ -246,14 +262,25 @@ function drawPreview(cr, w, h, p) {
         // single bottom bar: start + apps (left or centred), tray dots + clock right
         const ph = h * 0.1;
         const ty = h - ph;
-        cr.setSourceRGBA(0.06, 0.06, 0.08, 0.95);
+        if (p.xp)
+            cr.setSourceRGB(0.13, 0.33, 0.80);
+        else
+            cr.setSourceRGBA(0.06, 0.06, 0.08, 0.95);
         cr.rectangle(0, ty, w, ph);
         cr.fill();
         const s = ph * 0.62, g = s * 0.3, count = n + 1;
         const total = count * s + (count - 1) * g;
         let x0 = p.centered ? (w - total) / 2 : 8;
-        startButton(cr, x0, ty + (ph - s) / 2, s);
-        x0 += s + g;
+        if (p.xp) {
+            // green "start" pill
+            cr.setSourceRGB(0.24, 0.62, 0.25);
+            rounded(cr, 0, ty, s * 2.6, ph, ph / 2);
+            cr.fill();
+            x0 = s * 2.6 + g;
+        } else {
+            startButton(cr, x0, ty + (ph - s) / 2, s);
+            x0 += s + g;
+        }
         icons(cr, x0, ty + (ph - s) / 2, n, s, g, false);
         cr.setSourceRGBA(1, 1, 1, 0.8);
         for (let i = 0; i < 3; i++) {

@@ -215,6 +215,7 @@ export function topBarPage(window, settings) {
     ]));
     page.add(W.group('Layout', [
         r.combo('top-bar-position', 'Position', 'Bottom gives a Windows-style taskbar'),
+        r.spin('top-bar-height', 'Bar height', 0, 96, 2, 'Pixels; 0 keeps the theme\'s height'),
         r.switch('top-bar-hide-activities', 'Hide Activities button'),
         r.combo('top-bar-clock-position', 'Clock position'),
         W.switchRow(interfaceSettings, 'enable-hot-corners', 'Hot corner',
@@ -235,7 +236,12 @@ export function launcherPage(window, settings) {
        'launcher. Type to search, use the arrow keys and Enter, or Escape to close.');
     page.add(open);
     page.add(W.group('Appearance', [
-        r.spin('launcher-icon-size', 'Icon size', 16, 64, 2),
+        r.combo('launcher-style', 'Menu style'),
+        W.sensitiveWhenValue(settings, r.switch('launcher-xp-categories',
+            'Group All Apps into categories',
+            'Two-column style only: All Apps shows folders like Accessories, Games and Office'),
+        'launcher-style', ['xp']),
+        r.spin('launcher-icon-size', 'List icon size', 16, 64, 2),
         r.switch('launcher-show-descriptions', 'Show descriptions'),
         r.switch('launcher-show-power', 'Show power buttons', 'Lock, log out, suspend, restart and power off'),
         r.percent('launcher-opacity', 'Background opacity'),

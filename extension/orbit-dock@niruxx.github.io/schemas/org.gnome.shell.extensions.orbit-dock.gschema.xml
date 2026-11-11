@@ -296,5 +296,19 @@
       <default>24</default>
       <summary>App icon size in the taskbar</summary>
     </key>
+    <key name="launcher-style" type="s">
+      <choices><choice value="modern"/><choice value="list"/><choice value="minimal"/><choice value="classic"/><choice value="xp"/></choices>
+      <default>'modern'</default>
+      <summary>modern = search, pinned grid, All apps; list = one A–Z list; minimal = compact search box; classic = categories beside the list; xp = Windows XP start menu</summary>
+    </key>
+    <key name="top-bar-height" type="i">
+      <range min="0" max="96"/>
+      <default>0</default>
+      <summary>Top bar (or bottom taskbar) height in px; 0 keeps the theme's height</summary>
+    </key>
+    <key name="launcher-xp-categories" type="b">
+      <default>false</default>
+      <summary>Windows XP menu: group All Programs into category folders</summary>
+    </key>
   </schema>
 </schemalist>

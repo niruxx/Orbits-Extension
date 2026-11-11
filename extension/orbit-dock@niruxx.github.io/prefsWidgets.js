@@ -37,6 +37,11 @@ export const CHOICES = {
         ['maximized', 'A window is maximized']],
     'top-bar-clock-position': [['center', 'Center'], ['left', 'Left'], ['right', 'Right']],
     'top-bar-position': [['top', 'Top'], ['bottom', 'Bottom']],
+    'launcher-style': [['modern', 'Modern — search, pinned grid, All apps'],
+        ['list', 'List view — one A–Z list'],
+        ['minimal', 'Minimal — compact search box'],
+        ['classic', 'Classic — categories beside the list'],
+        ['xp', 'Two-column — apps and places (Windows XP layout)']],
     'taskbar-alignment': [['left', 'Left (Windows 10)'], ['center', 'Centered (Windows 11)']],
     // launcher
     'super-key-action': [['overview', 'Activities overview'], ['launcher', 'Orbit launcher'],

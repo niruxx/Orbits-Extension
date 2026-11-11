@@ -17,7 +17,7 @@ export const TOP_BAR_KEYS = new Set([
     'top-bar-style', 'top-bar-dynamic-trigger', 'top-bar-solid-opacity',
     'top-bar-transparent-opacity', 'top-bar-use-custom-color', 'top-bar-color',
     'top-bar-floating', 'top-bar-radius', 'top-bar-transition',
-    'top-bar-hide-activities', 'top-bar-clock-position', 'top-bar-position',
+    'top-bar-hide-activities', 'top-bar-clock-position', 'top-bar-position', 'top-bar-height',
     'glass-top-bar', 'glass-blur-radius', 'glass-brightness', 'glass-highlight',
 ]);
 
@@ -39,6 +39,7 @@ function readConfig(s) {
         hideActivities: s.get_boolean('top-bar-hide-activities'),
         clockPosition: s.get_string('top-bar-clock-position'),
         atBottom: s.get_string('top-bar-position') === 'bottom',
+        height: s.get_int('top-bar-height'),
         glass: s.get_boolean('glass-top-bar'),
         blur: s.get_int('glass-blur-radius'),
         brightness: s.get_double('glass-brightness'),
@@ -72,6 +73,7 @@ export class TopBarManager {
 
         this._applyActivities(c.hideActivities);
         this._applyClock(c.clockPosition);
+        this._applyHeight(c.height);
         this._applyPosition(c.atBottom);
 
         // Default look without glass: leave the theme alone.
@@ -203,6 +205,13 @@ export class TopBarManager {
 
     // ---- layout tweaks ---------------------------------------------------
 
+    /** Bar height in logical px (0 = theme). Set on the actor, not via inline
+     * style, because the overview owns Main.panel.style. */
+    _applyHeight(height) {
+        const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor;
+        Main.panel.set_height(height > 0 ? height * scale : -1);
+    }
+
     /** Move GNOME's whole top bar to the bottom edge (or back). The layout
      * manager re-places it on monitor changes, so follow its allocation. */
     _applyPosition(atBottom) {
@@ -281,5 +290,6 @@ export class TopBarManager {
         this._applyActivities(false);
         this._applyClock('center');
         this._applyPosition(false);
+        this._applyHeight(0);
     }
 }

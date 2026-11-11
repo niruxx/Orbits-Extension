@@ -9,10 +9,10 @@ Shell → Settings**, or run `gnome-extensions prefs orbit-dock@niruxx.github.io
 
 | Settings page | What it does |
 |---|---|
-| **Layouts** | One-click desktop layouts: GNOME, Ubuntu Unity, Windows 10, Windows 11, macOS (undo from the toast) |
+| **Layouts** | One-click desktop layouts: GNOME, Ubuntu Unity, Windows 10, Windows 11, Windows XP, macOS (undo from the toast) |
 | **Dock** | Position, panel mode, autohide/intellihide, content, click and scroll actions, appearance |
 | **Top Bar** | Dynamic or translucent bar, opacity, colour, floating look, glass, Activities, clock position, hot corner |
-| **Launcher** | Kicker-style app menu; choose what Super, Activities and the dock's apps button open |
+| **Launcher** | App menu in five styles (Modern, List view, Minimal, Classic, Two-column); choose what Super, Activities and the dock's apps button open |
 | **Personalization** | AppIndicator tray icons (top bar or bottom-left), focused-app button, title bar buttons |
 | **Effects** | Frosted glass for the dock, top bar and launcher; blur strength, brightness, frosted edge |
 
@@ -59,9 +59,18 @@ float as a rounded bar and use frosted glass. Changing a look option while the s
 *Theme default* switches it to Translucent, so the change shows. You can also hide
 Activities, move the clock, and show the focused app's name or window title with its menu.
 
-**Launcher**: search, categories that switch on hover, favourites, descriptions and power
-buttons. It can replace the overview for the Super key and the Activities button, and Orbit
-can skip the overview at login.
+**Launcher**: an app menu in five styles (Launcher → Menu style):
+- *Modern*: search, a pinned grid and an All apps list, with user and power buttons (Windows 11 style)
+- *List view*: one scrolling list, pinned apps first, then A–Z with letter headings
+- *Minimal*: a compact, centred search box with a row of pinned icons; results appear as you type
+- *Classic*: categories beside the app list (Plasma Kicker style)
+- *Two-column*: the Windows XP layout with a GNOME look: user and search on top; pinned apps
+  and All Apps on the left; folders, Settings, Software and Run… on the right; Log Out and
+  Power Off at the bottom. Optionally, All Apps is grouped into category folders
+  (Launcher → Group All Apps into categories).
+
+It can replace the overview for the Super key and the Activities button, and Orbit can
+skip the overview at login.
 
 **Tray icons**: Orbit implements the StatusNotifierWatcher/host and DBusMenu protocols, so
 Discord, Steam, Telegram and others show their icons and menus. Disable other AppIndicator

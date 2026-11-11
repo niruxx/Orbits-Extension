@@ -234,3 +234,145 @@
 .orbit-taskbar .overview-tile.orbit-dock-app.orbit-focused {
   background-color: rgba(255, 255, 255, 0.16);
 }
+
+/* ---- Launcher: simple style (search · pinned grid · all apps) ---------- */
+.orbit-launcher-simple {
+  padding: 20px 22px 14px;
+  spacing: 14px;
+  border-radius: 14px;
+}
+.orbit-launcher-simple .orbit-launcher-search {
+  padding: 9px 16px;
+}
+.orbit-launcher-section {
+  padding: 0 6px;
+}
+.orbit-launcher-section-title {
+  font-weight: bold;
+}
+.orbit-launcher-toggle {
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 0.9em;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+.orbit-launcher-toggle:hover,
+.orbit-launcher-toggle:focus {
+  background-color: rgba(255, 255, 255, 0.16);
+}
+.orbit-launcher-grid-row {
+  spacing: 4px;
+}
+.orbit-launcher-tile {
+  width: 88px;
+  padding: 10px 4px;
+  border-radius: 8px;
+}
+.orbit-launcher-tile:hover,
+.orbit-launcher-tile:focus {
+  background-color: rgba(255, 255, 255, 0.10);
+}
+.orbit-launcher-tile-box {
+  spacing: 6px;
+}
+.orbit-launcher-tile-name {
+  font-size: 0.85em;
+  max-width: 80px;
+}
+.orbit-launcher-footer {
+  padding: 10px 6px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.orbit-launcher-footer .orbit-launcher-power {
+  border-top: none;
+  padding-top: 0;
+}
+.orbit-launcher-userbox {
+  spacing: 10px;
+}
+
+/* Modern keeps the rules written for the former "simple" style. */
+.orbit-launcher-modern { padding: 20px 22px 14px; spacing: 14px; border-radius: 14px; }
+.orbit-launcher-modern .orbit-launcher-search { padding: 9px 16px; }
+
+/* ---- Launcher: list view ------------------------------------------------ */
+.orbit-launcher-list { padding: 16px 14px 12px; spacing: 10px; border-radius: 14px; }
+.orbit-launcher-letter {
+  font-size: 0.85em;
+  font-weight: bold;
+  color: -st-accent-color;
+  padding: 10px 10px 2px;
+}
+.orbit-launcher-listview .orbit-launcher-app { padding: 5px 10px; }
+
+/* ---- Launcher: minimal --------------------------------------------------- */
+.orbit-launcher-minimal { padding: 14px; spacing: 10px; border-radius: 16px; }
+.orbit-launcher-minimal-search {
+  font-size: 1.25em;
+  padding: 12px 18px;
+  border-radius: 12px;
+}
+.orbit-launcher-minimal .orbit-launcher-section { padding: 0 8px; }
+.orbit-launcher-minimal .orbit-launcher-section-title {
+  font-size: 0.85em;
+  color: rgba(242, 242, 244, 0.6);
+}
+.orbit-launcher-tile.orbit-icon-only { width: 56px; padding: 8px; }
+
+/* ---- Launcher: two-column (Windows XP layout, GNOME look) -------------- */
+.orbit-launcher-xp { padding: 14px; spacing: 10px; border-radius: 14px; }
+.orbit-xp-header { padding: 2px 4px; }
+.orbit-xp-body { spacing: 10px; }
+.orbit-xp-left { spacing: 4px; }
+.orbit-xp-right {
+  width: 190px;
+  padding: 6px;
+  spacing: 2px;
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+.orbit-xp-place,
+.orbit-xp-category,
+.orbit-xp-allprograms {
+  border-radius: 8px;
+  padding: 5px 10px;
+}
+.orbit-xp-place:hover, .orbit-xp-place:focus,
+.orbit-xp-category:hover, .orbit-xp-category:focus,
+.orbit-xp-allprograms:hover, .orbit-xp-allprograms:focus {
+  background-color: rgba(255, 255, 255, 0.10);
+}
+.orbit-xp-allprograms {
+  font-weight: bold;
+  background-color: rgba(255, 255, 255, 0.06);
+}
+.orbit-launcher-xp .orbit-bold { font-weight: bold; }
+.orbit-xp-count {
+  font-size: 0.85em;
+  color: rgba(242, 242, 244, 0.5);
+  padding-right: 6px;
+}
+.orbit-xp-arrow { color: rgba(242, 242, 244, 0.6); }
+.orbit-xp-category-back { border-radius: 8px; padding: 0; }
+.orbit-xp-category-back:hover, .orbit-xp-category-back:focus { background-color: rgba(255, 255, 255, 0.10); }
+.orbit-xp-category-title {
+  spacing: 8px;
+  padding: 6px 10px;
+  font-weight: bold;
+}
+.orbit-xp-separator {
+  height: 1px;
+  margin: 6px 8px;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+.orbit-xp-footer {
+  padding: 8px 2px 0;
+  spacing: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.orbit-xp-footer-button {
+  padding: 6px 12px;
+  border-radius: 8px;
+}
+.orbit-xp-footer-button:hover,
+.orbit-xp-footer-button:focus { background-color: rgba(255, 255, 255, 0.12); }
