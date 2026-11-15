@@ -53,6 +53,7 @@ const STYLES = {
     list: {width: 400, height: 620},
     minimal: {width: 540, height: 380},
     classic: {width: 620, height: 540},
+    arc: {width: 750, height: 615},
     xp: {width: 490, height: 580},
 };
 const GRID_COLUMNS = 6;
@@ -224,7 +225,7 @@ export class Launcher {
 
         const {width: w, height: h} = STYLES[c.style];
         const width = w * scale;
-        const height = h * scale;
+        const height = Math.min(h * scale, monitor.height - 80 * scale);
         this._menu = new St.Widget({name: 'orbitLauncher', layout_manager: new Clutter.BinLayout(), width, height});
 
         // Every style is a tinted panel that can sit on frosted glass.
@@ -251,6 +252,7 @@ export class Launcher {
             list: () => this._buildList(content),
             minimal: () => this._buildMinimal(content),
             classic: () => this._buildClassic(content),
+            arc: () => this._buildClassic(content),
             xp: () => this._buildXp(content),
         })[c.style]();
 
@@ -344,7 +346,8 @@ export class Launcher {
 
     _buildPowerRow() {
         const actions = SystemActions.getDefault();
-        const row = new St.BoxLayout({style_class: 'orbit-launcher-power', x_align: Clutter.ActorAlign.END});
+        const row = new St.BoxLayout({style_class: 'orbit-launcher-power',
+            x_align: this._config.style === 'arc' ? Clutter.ActorAlign.START : Clutter.ActorAlign.END});
         for (const action of this._availablePowerActions(actions)) {
             const button = new St.Button({
                 style_class: 'orbit-launcher-power-button', can_focus: true, accessible_name: action.label,
@@ -416,7 +419,10 @@ export class Launcher {
             if (!this._categoryApps(cat.id).length)
                 continue;
             const button = new St.Button({style_class: 'orbit-launcher-category', can_focus: true,
-                x_expand: true, child: this._iconLabel(cat.icon, cat.name, 16)});
+                x_expand: true, child: this._iconLabel(cat.id === 'favorites' && this._config.style === 'arc'
+                    ? 'view-pin-symbolic' : cat.icon,
+                this._config.style === 'arc' && cat.id === 'favorites' ? 'Pinned Apps'
+                    : this._config.style === 'arc' && cat.id === 'all' ? 'All Apps' : cat.name, 16)});
             button.connect('clicked', () => this._selectCategory(cat.id));
             button.connect('notify::hover', () => {
                 // Kicker-style: hovering a category switches to it after a beat.
@@ -595,7 +601,11 @@ export class Launcher {
             else
                 button.remove_style_pseudo_class('checked');
         }
-        this._showApps(this._categoryApps(id).map(a => a.app));
+        const apps = this._categoryApps(id).map(a => a.app);
+        if (this._config.style === 'arc')
+            this._showGrid(apps, 4, true);
+        else
+            this._showApps(apps);
     }
 
     _clearApps() {
@@ -748,19 +758,24 @@ export class Launcher {
     _appTile(app, withLabel = true) {
         const box = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL,
             style_class: 'orbit-launcher-tile-box', x_align: Clutter.ActorAlign.CENTER});
-        const icon = app.create_icon_texture(withLabel ? 40 : 36);
+        const icon = app.create_icon_texture(withLabel ? (this._config.style === 'arc' ? 48 : 40) : 36);
         icon.x_align = Clutter.ActorAlign.CENTER;
         box.add_child(icon);
         if (withLabel) {
             const label = new St.Label({text: app.get_name(), style_class: 'orbit-launcher-tile-name',
                 x_align: Clutter.ActorAlign.CENTER});
             label.clutter_text.ellipsize = ELLIPSIZE_END;
+            if (this._config.style === 'arc') {
+                label.clutter_text.line_wrap = true;
+                label.clutter_text.line_wrap_mode = 2; // Pango.WrapMode.WORD_CHAR
+            }
             box.add_child(label);
         }
         const button = new St.Button({style_class: withLabel ? 'orbit-launcher-tile' : 'orbit-launcher-tile orbit-icon-only',
             can_focus: true, child: box, accessible_name: app.get_name()});
         button._orbitApp = app;
         button.connect('clicked', () => this._launch(app));
+        button.connect('key-focus-in', () => this._scrollTo(button));
         return button;
     }
 
@@ -812,6 +827,10 @@ export class Launcher {
         }
         scored.sort((a, b) => a[0] - b[0] || a[1].get_name().localeCompare(b[1].get_name()));
         const limit = this._config.style === 'minimal' ? 8 : MAX_SEARCH_RESULTS;
+        if (this._config.style === 'arc') {
+            this._showGrid(scored.slice(0, limit).map(s => s[1]), 4, true);
+            return;
+        }
         this._showApps(scored.slice(0, limit).map(s => s[1]),
             this._config.style === 'xp' ? {iconSize: 24, descriptions: false} : {});
     }

@@ -376,3 +376,16 @@
 }
 .orbit-xp-footer-button:hover,
 .orbit-xp-footer-button:focus { background-color: rgba(255, 255, 255, 0.12); }
+
+/* Arc-style menu: category rail and four columns of large application tiles. */
+.orbit-launcher-arc { padding: 10px 6px 8px; spacing: 12px; border-radius: 14px; }
+.orbit-launcher-arc .orbit-launcher-header { padding: 0 8px; spacing: 24px; }
+.orbit-launcher-arc .orbit-launcher-userbox { width: 200px; }
+.orbit-launcher-arc .orbit-launcher-categories { width: 212px; spacing: 2px; }
+.orbit-launcher-arc .orbit-launcher-category { padding: 8px 12px; border-radius: 8px; }
+.orbit-launcher-arc .orbit-launcher-category:checked { background-color: #2167a3; }
+.orbit-launcher-arc .orbit-launcher-grid-row { spacing: 6px; }
+.orbit-launcher-arc .orbit-launcher-tile { width: 108px; padding: 10px 4px; }
+.orbit-launcher-arc .orbit-launcher-tile-name { max-width: 104px; text-align: center; }
+.orbit-launcher-arc .orbit-launcher-power { padding: 8px 10px 0; }
+.orbit-launcher-arc .orbit-launcher-power-label { padding-right: 0; }

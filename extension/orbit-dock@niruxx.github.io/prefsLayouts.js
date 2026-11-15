@@ -87,6 +87,24 @@ const PRESETS = [
         wm: {'button-layout': 'appmenu:minimize,maximize,close'},
     },
     {
+        title: 'Arc Desktop',
+        description: 'A translucent bottom panel with large app icons on the left, clock and tray ' +
+            'on the right, and an Arc-style category menu with a pinned app grid.',
+        preview: {topBar: 'taskbar', dock: 'taskbar', startButton: 'start', arc: true, glass: true},
+        orbit: {
+            'top-bar-position': 'bottom', 'dock-in-panel': true, 'taskbar-alignment': 'left',
+            'top-bar-height': 48, 'taskbar-icon-size': 36, 'launcher-style': 'arc',
+            'show-apps-button': true, 'show-apps-position': 'start', 'show-apps-action': 'launcher',
+            'indicator-style': 'line', 'hide-overview-dash': true,
+            'top-bar-style': 'translucent', 'top-bar-transparent-opacity': 0.55,
+            'top-bar-hide-activities': true, 'top-bar-clock-position': 'right',
+            'glass-top-bar': true, 'glass-launcher': true, 'launcher-opacity': 0.78,
+            'tray-enabled': true, 'tray-position': 'top-bar',
+            'super-key-action': 'launcher', 'activities-action': 'launcher', 'skip-startup-overview': true,
+        },
+        wm: {'button-layout': 'appmenu:minimize,maximize,close'},
+    },
+    {
         title: 'macOS',
         description: 'Translucent frosted menu bar with the current app\'s name, a floating glass ' +
             'dock that hides when windows need the space, window buttons on the left.',
@@ -260,12 +278,12 @@ function drawPreview(cr, w, h, p) {
         icons(cr, x0, h - ph + 4, n, icon, gap, false);
     } else if (p.dock === 'taskbar') {
         // single bottom bar: start + apps (left or centred), tray dots + clock right
-        const ph = h * 0.1;
+        const ph = h * (p.arc ? 0.13 : 0.1);
         const ty = h - ph;
         if (p.xp)
             cr.setSourceRGB(0.13, 0.33, 0.80);
         else
-            cr.setSourceRGBA(0.06, 0.06, 0.08, 0.95);
+            cr.setSourceRGBA(0.06, 0.06, 0.08, p.arc ? 0.55 : 0.95);
         cr.rectangle(0, ty, w, ph);
         cr.fill();
         const s = ph * 0.62, g = s * 0.3, count = n + 1;
