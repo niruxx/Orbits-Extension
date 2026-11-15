@@ -3,7 +3,7 @@ import Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
 import Gtk from 'gi://Gtk';
 import * as W from './prefsWidgets.js';
-import {Rows} from './prefsPages.js';
+import {Rows, conflictRow} from './prefsPages.js';
 import {PANEL_ELEMENTS, PANEL_EDGES, panelOverrides, readPanelConfig} from './taskbarModel.js';
 import {applySettings, exportSettings, readSettingsFile, validateSettings} from './settingsBackup.js';
 
@@ -164,7 +164,9 @@ export function taskbarPage(window, settings) {
         r.combo('taskbar-mode', 'Visibility'),
         r.combo('taskbar-alignment', 'Application alignment'),
     ]);
-    page.add(layout); page.add(monitorGroup(settings)); page.add(elementsGroup(settings));
+    page.add(layout);
+    page.add(W.group('Extension Conflicts', [conflictRow('Another panel or dock replacement is active', 'Disable overlapping panel replacements to avoid duplicate bars and conflicting work areas.', ['dash-to-panel@jderose9.github.com', 'dash-to-dock@micxgx.gmail.com', 'ubuntu-dock@ubuntu.com'])]));
+    page.add(monitorGroup(settings)); page.add(elementsGroup(settings));
     r._k('taskbar-monitor-overrides'); r._k('taskbar-element-order'); r._k('taskbar-hidden-elements');
     page.add(W.group('Panel Interactions', [
         r.combo('taskbar-scroll-action', 'Scroll on unused space'),

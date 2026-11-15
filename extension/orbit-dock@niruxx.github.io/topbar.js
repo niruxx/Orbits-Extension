@@ -11,6 +11,7 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {GlassLayer} from './glass.js';
+import {surfaceEffects} from './effectSettings.js';
 import {WindowWatcher, isWindowMaximized, parseHexColor, visibleWorkspaceWindows} from './util.js';
 
 export const TOP_BAR_KEYS = new Set([
@@ -40,9 +41,9 @@ function readConfig(s) {
         clockPosition: s.get_string('top-bar-clock-position'),
         atBottom: s.get_string('top-bar-position') === 'bottom',
         height: s.get_int('top-bar-height'),
-        glass: s.get_boolean('glass-top-bar'),
-        blur: s.get_int('glass-blur-radius'),
-        brightness: s.get_double('glass-brightness'),
+        glass: surfaceEffects(s, 'panel').enabled,
+        blur: surfaceEffects(s, 'panel').blur,
+        brightness: surfaceEffects(s, 'panel').brightness,
         highlight: s.get_boolean('glass-highlight'),
     };
 }
@@ -51,7 +52,7 @@ export class TopBarManager {
     constructor(settings) {
         this._settings = settings;
         this._settings.connectObject('changed', (_s, key) => {
-            if (TOP_BAR_KEYS.has(key))
+            if (TOP_BAR_KEYS.has(key) || key.startsWith('glass-panel-') || key === 'reduced-effects')
                 this._queueReload();
         }, this);
         this._build();
@@ -97,6 +98,7 @@ export class TopBarManager {
         if (c.glass) {
             this._glass = new GlassLayer({
                 monitorIndex: Main.layoutManager.primaryIndex,
+                backdrop: surfaceEffects(this._settings, 'panel').backdrop,
                 blur: c.blur,
                 brightness: c.brightness,
             });

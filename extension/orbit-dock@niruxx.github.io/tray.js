@@ -13,11 +13,12 @@ import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 
+import {trayLayout} from './orbitModel.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-export const TRAY_KEYS = new Set(['tray-enabled', 'tray-position', 'tray-icon-size']);
+export const TRAY_KEYS = new Set(['tray-enabled', 'tray-position', 'tray-icon-size', 'tray-order', 'tray-hidden-apps', 'tray-visible-limit']);
 
 const WATCHER_NAME = 'org.kde.StatusNotifierWatcher';
 const WATCHER_PATH = '/StatusNotifierWatcher';
@@ -187,6 +188,7 @@ class OrbitTrayItemButton extends PanelMenu.Button {
     _sync() {
         const p = this._props;
         this.container.visible = p.Status !== 'Passive';
+        this._manager._applyTrayLayout();
         const title = p.Title || p.Id || '';
         this.accessible_name = title;
 
@@ -458,7 +460,7 @@ export class TrayManager {
             Gio.BusNameWatcherFlags.NONE, null, () => this._removeItem(key));
         const entry = {busName, path, watchId, button: null};
         this._items.set(key, entry);
-        this._showItem(key, entry);
+        this._queueViewRebuild();
         this._dbus?.emit_signal('StatusNotifierItemRegistered', new GLib.Variant('(s)', [key]));
     }
 
@@ -469,6 +471,7 @@ export class TrayManager {
         this._items.delete(key);
         Gio.bus_unwatch_name(entry.watchId);
         this._destroyButtons(entry);
+        this._queueViewRebuild();
         if (this._area && !this._items.size)
             this._area.hide();
         this._dbus?.emit_signal('StatusNotifierItemUnregistered', new GLib.Variant('(s)', [key]));
@@ -529,7 +532,43 @@ export class TrayManager {
         }
     }
 
+    _applyTrayLayout() {
+        if (!this._viewBuilt) return;
+        let known; try { known = JSON.parse(this._settings.get_string('tray-known-items')); } catch { known = {}; }
+        const groups = new Map();
+        for (const entry of this._items.values()) for (const button of entry.buttons ?? []) {
+            const id = button._props?.Id || entry.busName;
+            if (button._props?.Id) known[id] = button._props.Title || id;
+            const parent = button.container.get_parent(); if (!parent) continue;
+            if (!groups.has(parent)) groups.set(parent, []);
+            groups.get(parent).push({id, active: button._props?.Status !== 'Passive', button});
+        }
+        const registry = JSON.stringify(known);
+        if (registry !== this._settings.get_string('tray-known-items')) this._settings.set_string('tray-known-items', registry);
+        this._overflowButtons ??= new Map();
+        for (const [parent, items] of groups) {
+            let control = this._overflowButtons.get(parent);
+            if (!control && !this._settings.get_int('tray-visible-limit')) control = {expanded:false};
+            if (!control) {
+                const actor = new St.Button({label:'…', can_focus:true, accessible_name:'Show more tray icons', style_class:'orbit-panel-button'});
+                control = {actor, expanded:false}; this._overflowButtons.set(parent,control); parent.add_child(actor);
+                actor.connect('destroy', () => this._overflowButtons.delete(parent));
+                actor.connect('clicked', () => { control.expanded = !control.expanded; this._applyTrayLayout(); });
+            }
+            const layout = trayLayout(items,this._settings.get_strv('tray-order'),this._settings.get_strv('tray-hidden-apps'),this._settings.get_int('tray-visible-limit'),control.expanded);
+            items.forEach(item => { item.button.container.visible = false; });
+            layout.items.forEach((item,index) => { parent.set_child_at_index(item.button.container,index); item.button.container.visible = layout.visible.includes(item); });
+            if (control.actor) {
+                control.actor.visible = layout.overflow; control.actor.label = control.expanded ? '‹' : '…';
+                control.actor.accessible_name = control.expanded ? 'Show fewer tray icons' : 'Show more tray icons';
+                parent.set_child_above_sibling(control.actor,null);
+            }
+        }
+    }
+
     _destroyView() {
+        for (const control of this._overflowButtons?.values() ?? []) control.actor.destroy();
+        this._overflowButtons = new Map();
         this._viewBuilt = false;
         for (const entry of this._items.values()) {
             this._destroyButtons(entry);

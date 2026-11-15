@@ -8,6 +8,7 @@ import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk';
 
 import * as W from './prefsWidgets.js';
+import {trayControls} from './trayPrefs.js';
 import {addLauncherControls} from './launcherPrefs.js';
 
 const CONFLICTING_DOCKS = [
@@ -93,7 +94,7 @@ function shellExtensionsCall(method, uuid, callback = null) {
         });
 }
 
-function conflictRow(title, subtitle, uuids) {
+export function conflictRow(title, subtitle, uuids) {
     const row = new Adw.ActionRow({title, subtitle, css_classes: ['warning'], visible: false});
     const active = new Set();
     for (const uuid of uuids) {
@@ -102,6 +103,7 @@ function conflictRow(title, subtitle, uuids) {
             if (info?.state === 1) {
                 active.add(uuid);
                 row.visible = true;
+                row.subtitle = `${subtitle} Active: ${[...active].join(', ')}`;
             }
         });
     }
@@ -349,6 +351,8 @@ export function personalizationPage(window, settings) {
         'Only one program can host tray icons. Disable the AppIndicator extension to use Orbit\'s tray.',
         APPINDICATOR_EXTENSIONS));
     page.add(tray);
+    page.add(trayControls(settings));
+    r._k('tray-order'); r._k('tray-hidden-apps'); r._k('tray-visible-limit');
     page.add(W.group('Focused Application', [
         r.switch('app-button-enabled', 'Show the current app in the top bar',
             'Click it for the app\'s windows, New Window and Quit'),
@@ -375,9 +379,16 @@ export function effectsPage(window, settings) {
         r.switch('glass-dock', 'Dock'),
         r.switch('glass-top-bar', 'Top bar'),
         r.switch('glass-launcher', 'Launcher'),
-    ], 'Frosted Shell surfaces: the launcher blurs live windows and wallpaper; the dock and bar blur the wallpaper, ' +
+    ], 'Frosted Shell surfaces can blur live windows or wallpaper only, ' +
        'tinted by each surface\'s background colour. Lower a surface\'s opacity for a clearer glass look.');
     page.add(glass);
+    page.add(W.group('Performance', [r.switch('reduced-effects', 'Reduced effects', 'Disable glass and icon hover animations across Orbit')]));
+    for (const [surface, label] of [['dock', 'Dock'], ['panel', 'Top Bar / Taskbar'], ['launcher', 'Launcher']]) page.add(W.group(`${label} Glass`, [
+        r.switch(`glass-${surface}-custom`, 'Use independent blur settings'),
+        r.spin(`glass-${surface}-blur`, 'Blur strength', 0, 100, 2),
+        r.percent(`glass-${surface}-brightness`, 'Brightness'),
+        r.switch(`glass-${surface}-windows`, 'Blur windows behind this surface', 'Use the live window scene instead of wallpaper only'),
+    ]));
     page.add(W.group('Frost', [
         r.spin('glass-blur-radius', 'Blur strength', 0, 100, 2, 'Pixels'),
         r.percent('glass-brightness', 'Brightness', 'Lower values darken the glass'),

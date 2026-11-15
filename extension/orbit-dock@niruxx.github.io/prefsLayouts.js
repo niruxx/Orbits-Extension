@@ -11,10 +11,11 @@ import Gtk from 'gi://Gtk';
 import Cairo from 'cairo';
 
 import {toast} from './prefsWidgets.js';
+import {customPresetsGroup, previewPreset} from './desktopPresets.js';
 
 const WM_SCHEMA = 'org.gnome.desktop.wm.preferences';
 
-const PRESETS = [
+export const PRESETS = [
     {
         title: 'GNOME',
         description: 'GNOME\'s own workflow: Super opens the overview, floating dock that hides ' +
@@ -130,36 +131,15 @@ function variantFor(settings, key, value) {
 }
 
 function applyPreset(window, settings, preset) {
-    const wm = new Gio.Settings({schema_id: WM_SCHEMA});
-    const keys = settings.settings_schema.list_keys();
-    const snapshot = {
-        orbit: keys.map(k => [k, settings.get_value(k)]),
-        wm: Object.keys(preset.wm).map(k => [k, wm.get_value(k)]),
-    };
-
-    const transaction = new Gio.Settings({settings_schema: settings.settings_schema, backend: settings.backend, path: settings.path});
-    transaction.delay();
-    for (const key of keys) {
-        if ((key.startsWith('desktop-') || key.startsWith('launcher-')) && !(key in preset.orbit))
-            continue;
-        if (key in preset.orbit)
-            transaction.set_value(key, variantFor(settings, key, preset.orbit[key]));
-        else
-            transaction.reset(key);
+    const orbit = {};
+    // Reset only settings owned by the built-in layout family. Personal pins,
+    // custom themes, tray rules and other unrelated preferences are preserved.
+    const owned = new Set(PRESETS.flatMap(item => Object.keys(item.orbit)));
+    for (const key of owned) {
+        const value = Object.hasOwn(preset.orbit,key) ? variantFor(settings,key,preset.orbit[key]) : settings.settings_schema.get_key(key).get_default_value();
+        orbit[key] = {type:value.get_type_string(),value:value.deep_unpack()};
     }
-    transaction.apply();
-    for (const [key, value] of Object.entries(preset.wm))
-        wm.set_value(key, variantFor(wm, key, value));
-
-    toast(window, `Applied the ${preset.title} layout`, 'Undo', () => {
-        transaction.delay();
-        for (const [key, value] of snapshot.orbit)
-            transaction.set_value(key, value);
-        transaction.apply();
-        for (const [key, value] of snapshot.wm)
-            wm.set_value(key, value);
-        toast(window, 'Previous layout restored');
-    }, 10);
+    previewPreset(window, settings, {format:'orbit-desktop-preset',version:1,name:preset.title,orbit,wm:preset.wm});
 }
 
 // ---- preview drawing ------------------------------------------------------
@@ -362,5 +342,6 @@ export function layoutsPage(window, settings) {
         flow.append(card(window, settings, preset));
     group.add(flow);
     page.add(group);
+    page.add(customPresetsGroup(window, settings));
     return page;
 }

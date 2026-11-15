@@ -645,5 +645,24 @@
     <key name="taskbar-system-icon-spacing" type="i"><range min="0" max="24"/><default>6</default><summary>Spacing between system status icons in logical pixels</summary></key>
     <key name="taskbar-tray-icon-spacing" type="i"><range min="0" max="24"/><default>6</default><summary>Spacing between application tray icons in logical pixels</summary></key>
     <key name="taskbar-status-padding" type="i"><range min="0" max="24"/><default>8</default><summary>Clock and system button padding along the taskbar</summary></key>
+<key name="custom-presets" type="s"><default>'{}'</default><summary>custom presets</summary></key>
+<key name="settings-version" type="i"><range min="0" max="2147483647"/><default>0</default><summary>settings version</summary></key>
+<key name="reduced-effects" type="b"><default>false</default><summary>reduced effects</summary></key>
+<key name="tray-order" type="as"><default>[]</default><summary>tray order</summary></key>
+<key name="tray-hidden-apps" type="as"><default>[]</default><summary>tray hidden apps</summary></key>
+<key name="tray-known-items" type="s"><default>'{}'</default><summary>tray known items</summary></key>
+<key name="tray-visible-limit" type="i"><range min="0" max="32"/><default>0</default><summary>tray visible limit</summary></key>
+<key name="glass-dock-custom" type="b"><default>false</default><summary>glass dock custom</summary></key>
+<key name="glass-dock-blur" type="i"><range min="0" max="100"/><default>30</default><summary>glass dock blur</summary></key>
+<key name="glass-dock-brightness" type="d"><range min="0.1" max="1"/><default>0.75</default><summary>glass dock brightness</summary></key>
+<key name="glass-dock-windows" type="b"><default>false</default><summary>glass dock windows</summary></key>
+<key name="glass-panel-custom" type="b"><default>false</default><summary>glass panel custom</summary></key>
+<key name="glass-panel-blur" type="i"><range min="0" max="100"/><default>30</default><summary>glass panel blur</summary></key>
+<key name="glass-panel-brightness" type="d"><range min="0.1" max="1"/><default>0.75</default><summary>glass panel brightness</summary></key>
+<key name="glass-panel-windows" type="b"><default>false</default><summary>glass panel windows</summary></key>
+<key name="glass-launcher-custom" type="b"><default>false</default><summary>glass launcher custom</summary></key>
+<key name="glass-launcher-blur" type="i"><range min="0" max="100"/><default>30</default><summary>glass launcher blur</summary></key>
+<key name="glass-launcher-brightness" type="d"><range min="0.1" max="1"/><default>0.75</default><summary>glass launcher brightness</summary></key>
+<key name="glass-launcher-windows" type="b"><default>true</default><summary>glass launcher windows</summary></key>
   </schema>
 </schemalist>

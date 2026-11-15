@@ -10,6 +10,7 @@ import * as CtrlAltTab from 'resource:///org/gnome/shell/ui/ctrlAltTab.js';
 import * as Volume from 'resource:///org/gnome/shell/ui/status/volume.js';
 import {FocusedAppButton} from './appButton.js';
 import {GlassLayer} from './glass.js';
+import {surfaceEffects} from './effectSettings.js';
 import {canSignOut, signOut} from './sessionActions.js';
 import {orderedPanelElements, panelGeometry} from './taskbarModel.js';
 import {isWindowMaximized, parseHexColor} from './util.js';
@@ -64,9 +65,9 @@ export class TaskbarPanel {
             orientation: dock.horizontal ? Clutter.Orientation.HORIZONTAL : Clutter.Orientation.VERTICAL});
         this.actor._orbitEdge = dock.position;
         this.menuManager = new PopupMenu.PopupMenuManager(this.slider);
-        if (this._settings.get_boolean('glass-top-bar')) {
+        if (surfaceEffects(this._settings, 'panel').enabled) {
             this._glass = new GlassLayer({monitorIndex: dock.monitorIndex,
-                blur: this._settings.get_int('glass-blur-radius'), brightness: this._settings.get_double('glass-brightness')});
+                ...surfaceEffects(this._settings, 'panel')});
             this.slider.add_child(this._glass.actor);
             this.slider.connect('notify::translation-x', () => this._glass.sync());
             this.slider.connect('notify::translation-y', () => this._glass.sync());

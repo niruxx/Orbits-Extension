@@ -8,6 +8,7 @@ import {DesktopIcons} from './desktopIcons.js';
 import {Launcher} from './launcher.js';
 import {ShellModes} from './shellModes.js';
 import {TopBarManager} from './topbar.js';
+import {migrationValues} from './orbitModel.js';
 import {TrayManager} from './tray.js';
 
 function attempt(name, make) {
@@ -34,6 +35,7 @@ function destroyQuietly(part) {
 export default class OrbitShellExtension extends Extension {
     enable() {
         this._settings = this.getSettings();
+        for (const [key, value] of migrationValues(this._settings.get_int('settings-version'))) this._settings.set_int(key, value);
         // Start the tray first so apps launched at login find it.
         this._tray = attempt('tray', () => new TrayManager(this._settings));
         Main.sessionMode.connectObject('updated', () => this._syncSessionMode(), this);

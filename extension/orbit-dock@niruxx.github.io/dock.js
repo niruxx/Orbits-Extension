@@ -19,6 +19,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import {GlassLayer} from './glass.js';
+import {surfaceEffects} from './effectSettings.js';
 import {WindowPreviews} from './windowPreviews.js';
 import {ShowDesktop} from './showDesktop.js';
 import {DockStatus} from './dockStatus.js';
@@ -124,7 +125,7 @@ function readConfig(settings) {
         previewRadius: settings.get_int('preview-radius'),
         previewTitleSize: settings.get_int('preview-title-size'),
         indicatorFocusedStyle: settings.get_string('indicator-focused-style'),
-        hoverAnimation: settings.get_string('hover-animation'),
+        hoverAnimation: settings.get_boolean('reduced-effects') ? 'none' : settings.get_string('hover-animation'),
         hoverStrength: settings.get_double('hover-animation-strength'),
         shiftClickAction: settings.get_string('shift-click-action'),
         shiftMiddleClickAction: settings.get_string('shift-middle-click-action'),
@@ -156,9 +157,9 @@ function readConfig(settings) {
         panelAtBottom: settings.get_string('top-bar-position') === 'bottom',
         taskbarAlignment: settings.get_string('taskbar-alignment'),
         taskbarIconSize: settings.get_int('taskbar-icon-size'),
-        glass: settings.get_boolean('glass-dock'),
-        blur: settings.get_int('glass-blur-radius'),
-        brightness: settings.get_double('glass-brightness'),
+        glass: surfaceEffects(settings, 'dock').enabled,
+        blur: surfaceEffects(settings, 'dock').blur,
+        brightness: surfaceEffects(settings, 'dock').brightness,
         highlight: settings.get_boolean('glass-highlight'),
     };
 }
@@ -485,6 +486,7 @@ class Dock {
             this._glass = new GlassLayer({
                 monitorIndex: this.monitorIndex,
                 radius: this.config.extend ? 0 : this.config.radius,
+                backdrop: surfaceEffects(this._manager.settings, 'dock').backdrop,
                 blur: this.config.blur,
                 brightness: this.config.brightness,
             });
@@ -1103,6 +1105,8 @@ class Dock {
     }
 
     _fullscreen() {
+        // Display geometry changes before deferred taskbar rebuilds run.
+        if (this._destroyed || this.monitorIndex < 0 || this.monitorIndex >= global.display.get_n_monitors()) return false;
         return global.display.get_monitor_in_fullscreen(this.monitorIndex);
     }
 

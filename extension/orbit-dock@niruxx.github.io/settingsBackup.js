@@ -2,6 +2,7 @@
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
+import {presetEnvelope} from './presetModel.js';
 import {validateLauncherValue, THEME_KEYS, jsonObject, parseShortcuts} from './launcherModel.js';
 import {PANEL_ELEMENTS, panelOverrides} from './taskbarModel.js';
 
@@ -42,6 +43,20 @@ export function validateSettings(text, settings) {
         if (key === 'taskbar-monitor-overrides') panelOverrides(value, true);
         if (['taskbar-element-order', 'taskbar-hidden-elements'].includes(key) &&
             (value.some(id => !PANEL_ELEMENTS.includes(id)) || new Set(value).size !== value.length)) throw new Error(`Invalid panel elements in ${key}`);
+        if (key === 'tray-known-items') {
+            const known = jsonObject(value,true);
+            if (Object.entries(known).some(([id,title]) => !id || typeof title !== 'string')) throw new Error('Invalid known tray applications');
+        }
+        if (['tray-order','tray-hidden-apps'].includes(key) && (new Set(value).size !== value.length || value.some(id => !id))) throw new Error(`Invalid tray application list: ${key}`);
+        if (key === 'custom-presets') {
+            const presets = jsonObject(value, true);
+            if (Object.keys(presets).length > 16) throw new Error('Too many desktop presets');
+            for (const [name, preset] of Object.entries(presets)) {
+                const data = presetEnvelope(JSON.stringify(preset));
+                if (data.name !== name) throw new Error('Preset name mismatch');
+                validateSettings(JSON.stringify({format:'orbit-shell-settings',version:1,settings:data.orbit}),settings);
+            }
+        }
         validateLauncherValue(key, value);
         if (key === 'launcher-shortcuts') for (const item of parseShortcuts(value, true)) if (item.type === 'command') GLib.shell_parse_argv(item.target);
         if (key === 'launcher-saved-themes') {

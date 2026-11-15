@@ -35,17 +35,16 @@ check:
 	gjs -m tests/launcherNavigation.js
 	gjs -m tests/launcherFeatures.js
 	gjs -m tests/sessionActions.js
+	gjs -m tests/orbitCompletion.js
 
 # Zip for extensions.gnome.org or `gnome-extensions install`.
 zip:
-	cd $(SRC) && gnome-extensions pack --force \
-	  $(foreach f,$(filter-out extension.js prefs.js,$(notdir $(wildcard $(SRC)/*.js))),--extra-source=$(f)) \
-	  --out-dir=../..
+	sh scripts/package.sh
 
 # Source tarball (used by packaging/arch/PKGBUILD).
 dist:
 	tar --exclude=gschemas.compiled --transform 's,^,$(DIST)/,' \
-	    -czf packaging/arch/$(DIST).tar.gz extension tests README.md roadmap.md LICENSE Makefile
+	    -czf packaging/arch/$(DIST).tar.gz extension tests scripts docs README.md roadmap.md ACCEPTANCE.md LICENSE Makefile
 
 # Build the Arch package (packaging/arch/gnome-shell-extension-orbit-*.pkg.tar.zst).
 pkg-arch: dist

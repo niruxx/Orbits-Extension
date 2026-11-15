@@ -30,7 +30,7 @@ glib-compile-schemas "$XDG_DATA_HOME/gnome-shell/extensions/orbit-dock@niruxx.gi
 driver="$XDG_DATA_HOME/gnome-shell/extensions/orbit-smoke@local"
 mkdir -p "$driver"
 cp "${ORBIT_SMOKE_DRIVER:-tests/shellSmoke.js}" "$driver/extension.js"
-printf '%s\n' '{"uuid":"orbit-smoke@local","name":"Orbit smoke driver","description":"Temporary test driver","shell-version":["48","49","50","51"]}' > "$driver/metadata.json"
+printf '%s\n' '{"uuid":"orbit-smoke@local","name":"Orbit smoke driver","description":"Temporary test driver","shell-version":["48","49","50","51"],"session-modes":["user","unlock-dialog"]}' > "$driver/metadata.json"
 printf '%s\n' '[Desktop Entry]' 'Type=Application' 'Name=Orbit Smoke' 'Exec=gjs' 'Icon=utilities-terminal' 'StartupWMClass=io.github.orbit.Smoke' > "$XDG_DATA_HOME/applications/io.github.orbit.Smoke.desktop"
 cat > "$scratch/providers/gnome-shell/search-providers/orbit-smoke.ini" <<'PROVIDER'
 [Shell Search Provider]
@@ -43,8 +43,18 @@ gsettings set org.gnome.shell enabled-extensions "['orbit-dock@niruxx.github.io'
 gsettings set org.gnome.shell disable-user-extensions false
 gsettings set org.gnome.desktop.session idle-delay 0
 gsettings set org.gnome.desktop.screensaver lock-enabled false
+if [ "${ORBIT_SMOKE_A11Y:-0}" = 1 ]; then
+    export GTK_A11Y=atspi
+    unset NO_AT_BRIDGE
+    gsettings set org.gnome.desktop.interface toolkit-accessibility true
+fi
 # Keep this session isolated from the workstation's running compositor.
-timeout 40s dbus-run-session -- gnome-shell --headless --wayland --no-x11 --virtual-monitor 1280x800 --virtual-monitor 1024x768 --wayland-display "$WAYLAND_DISPLAY" > "$scratch/shell.log" 2>&1 || true
+if [ "${ORBIT_SMOKE_A11Y:-0}" = 1 ]; then
+    set -- sh tests/accessibilitySession.sh
+else
+    set --
+fi
+timeout 40s dbus-run-session -- "$@" gnome-shell --headless --wayland --no-x11 --virtual-monitor 1280x800 --virtual-monitor 1024x768 --wayland-display "$WAYLAND_DISPLAY" > "$scratch/shell.log" 2>&1 || true
 if [ -f "$scratch/result" ]; then
     cat "$scratch/result"
     printf '\n'

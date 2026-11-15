@@ -25,6 +25,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as SystemActions from 'resource:///org/gnome/shell/misc/systemActions.js';
 
 import {GlassLayer} from './glass.js';
+import {surfaceEffects} from './effectSettings.js';
 import {canSignOut, signOut} from './sessionActions.js';
 
 import {LAUNCHER_CATEGORIES as CATEGORIES, categoryOrder, parseShortcuts, jsonObject, updateInstalled} from './launcherModel.js';
@@ -98,6 +99,7 @@ export class Launcher {
         this._root = null;
         this._appSystem = Shell.AppSystem.get_default();
         this._searchService = new LauncherSearch(settings);
+        Main.layoutManager.connectObject('monitors-changed', () => this.close(), this);
         this._trackInstalled();
         try {
             this._recentMonitor = Gio.File.new_for_path(GLib.get_user_data_dir()).monitor_directory(Gio.FileMonitorFlags.NONE, null);
@@ -163,6 +165,8 @@ export class Launcher {
     open(source = null) {
         if (this.isOpen)
             return;
+        this._previousFocus = global.stage.get_key_focus();
+        if (this._previousFocus) this._previousFocusSignal = this._previousFocus.connect('destroy', () => { this._previousFocus = null; this._previousFocusSignal = 0; });
         if (Main.overview.visible)
             Main.overview.hide();
 
@@ -174,9 +178,9 @@ export class Launcher {
             xpCategories: this._settings.get_boolean('launcher-xp-categories'),
             power: this._settings.get_boolean('launcher-show-power'),
             opacity: this._settings.get_double('launcher-opacity'),
-            glass: this._settings.get_boolean('glass-launcher'),
-            blur: this._settings.get_int('glass-blur-radius'),
-            brightness: this._settings.get_double('glass-brightness'),
+            glass: surfaceEffects(this._settings, 'launcher').enabled,
+            blur: surfaceEffects(this._settings, 'launcher').blur,
+            brightness: surfaceEffects(this._settings, 'launcher').brightness,
             highlight: this._settings.get_boolean('glass-highlight'),
             gridIconSize: this._settings.get_int('launcher-grid-icon-size'),
             spacing: this._settings.get_int('launcher-spacing'),
@@ -223,6 +227,10 @@ export class Launcher {
         this._root = null;
         this._glass = null; // destroyed with the root
         root.destroy();
+        const previousFocus = this._previousFocus;
+        if (previousFocus && this._previousFocusSignal) previousFocus.disconnect(this._previousFocusSignal);
+        this._previousFocus = null; this._previousFocusSignal = 0;
+        if (previousFocus?.get_stage()) previousFocus.grab_key_focus();
         this._taskbarChanged?.();
     }
 
@@ -232,6 +240,7 @@ export class Launcher {
         this._searchService.privacy.disconnectObject(this);
         this._searchService.searchSettings.disconnectObject(this);
         this._searchService.destroy();
+        Main.layoutManager.disconnectObject(this);
         this._recentMonitor?.cancel();
         this._settings.disconnectObject(this);
         this._appSystem.disconnectObject(this);
@@ -351,7 +360,7 @@ export class Launcher {
         if (c.glass) {
             this._glass = new GlassLayer({
                 monitorIndex: monitor.index, radius: this._settings.get_int('launcher-radius'),
-                blur: c.blur, brightness: c.brightness, backdrop: true,
+                blur: c.blur, brightness: c.brightness, backdrop: surfaceEffects(this._settings, 'launcher').backdrop,
             });
             this._menu.add_child(this._glass.actor);
         }
@@ -578,7 +587,7 @@ export class Launcher {
         for (const cat of this._categories()) {
             if (!this._settings.get_boolean('launcher-show-empty-categories') && !['favorites', 'all', 'recent', 'shortcuts'].includes(cat.id) && !this._categoryApps(cat.id).length)
                 continue;
-            const button = new St.Button({style_class: 'orbit-launcher-category', can_focus: true,
+            const button = new St.Button({style_class: 'orbit-launcher-category', can_focus: true, accessible_name: cat.name,
                 x_expand: true, child: this._iconLabel(cat.id === 'favorites' && this._config.style === 'arc'
                     ? 'view-pin-symbolic' : cat.icon,
                 cat.name, 16)});
@@ -997,7 +1006,7 @@ export class Launcher {
         }
         box.add_child(text);
 
-        const button = new St.Button({style_class: 'orbit-launcher-app', can_focus: true, x_expand: true,
+        const button = new St.Button({style_class: 'orbit-launcher-app', can_focus: true, x_expand: true, accessible_name: app.get_name(),
             child: box});
         button._orbitApp = app;
         button.connect('clicked', () => this._launch(app));
@@ -1281,7 +1290,7 @@ export class Launcher {
 
     _onKeyPress(event) {
         const symbol = event.get_key_symbol();
-        const focus = global.stage.get_key_focus();
+        const focus = global.stage.get_key_focus() ?? this._activeItem ?? this._search.clutter_text;
         if (symbol === Clutter.KEY_Tab || symbol === Clutter.KEY_ISO_Left_Tab) {
             const items = [this._search, ...this._navigationButtons()];
             const index = items.findIndex(item => item === focus || item.contains(focus));

@@ -22,10 +22,12 @@ export default class SmokeDriver extends Extension {
         this._timers.add(id);
     }
     _write(text) {
+        if (this._failed && text.startsWith('PASS:')) return;
         Gio.File.new_for_path(GLib.getenv('ORBIT_SMOKE_RESULT')).replace_contents(
             text, null, false, Gio.FileCreateFlags.NONE, null);
     }
     _fail(error) {
+        this._failed = true;
         console.error(error);
         this._write(`FAIL: ${error.message}\n${error.stack ?? ''}`);
     }
@@ -331,7 +333,7 @@ export default class SmokeDriver extends Extension {
         });
     }
     _launcherFeatures() {
-        this._launcherExtra().then(() => this._desktop()).catch(error => this._fail(error));
+        this._launcherExtra().then(() => this._completionChecks()).then(() => this._desktop()).catch(error => this._fail(error));
     }
     async _launcherExtra() {
         const settings = this._extension._settings, launcher = this._extension._launcher;
@@ -433,6 +435,41 @@ export default class SmokeDriver extends Extension {
         } finally { context.scale_factor = originalScale; await pause(500); }
         settings.set_string('launcher-shortcuts', '[]');
     }
+    async _completionChecks() {
+        const settings = this._extension._settings, pause = ms => new Promise(resolve => this._later(ms, resolve));
+        this._assert(settings.get_int('settings-version') === 1, 'Settings migration was not applied');
+        const xml = `<node><interface name="org.kde.StatusNotifierItem">
+            <property name="Id" type="s" access="read"/><property name="Title" type="s" access="read"/>
+            <property name="Status" type="s" access="read"/><property name="IconName" type="s" access="read"/>
+            <property name="Menu" type="o" access="read"/><property name="ItemIsMenu" type="b" access="read"/>
+            <method name="Activate"><arg type="i" direction="in"/><arg type="i" direction="in"/></method>
+        </interface></node>`;
+        this._extraIndicator = Gio.DBusExportedObject.wrapJSObject(xml, {Id:'smoke2',Title:'Second Smoke Indicator',Status:'Active',IconName:'utilities-terminal-symbolic',Menu:'/',ItemIsMenu:false,Activate(){}});
+        this._extraIndicator.export(Gio.DBus.session,'/OrbitExtraItem');
+        await new Promise((resolve,reject) => Gio.DBus.session.call('org.kde.StatusNotifierWatcher','/StatusNotifierWatcher','org.kde.StatusNotifierWatcher','RegisterStatusNotifierItem',new GLib.Variant('(s)',['/OrbitExtraItem']),null,Gio.DBusCallFlags.NONE,3000,null,(c,r)=>{try{c.call_finish(r);resolve();}catch(e){reject(e);}}));
+        settings.set_strv('tray-order',['smoke2','smoke']);settings.set_int('tray-visible-limit',1);await pause(500);
+        const manager=this._extension._tray;
+        const entries=[...manager._items.values()];
+        this._assert(entries.length===2,'Second tray indicator not registered');
+        const first=entries.find(entry=>entry.button?._props.Id==='smoke2');
+        const other=entries.find(entry=>entry.button?._props.Id==='smoke');
+        this._assert(first?.button.container.visible && !other?.button.container.visible,'Tray order/overflow did not apply');
+        const overflow=[...manager._overflowButtons.values()][0];
+        this._assert(overflow?.actor.visible,'Tray overflow control missing');overflow.actor.emit('clicked',1);
+        this._assert(other.button.container.visible,'Tray overflow did not expand');
+        settings.set_strv('tray-hidden-apps',['smoke2']);await pause(400);
+        this._assert(!entries.find(entry=>entry.button?._props.Id==='smoke2')?.button.container.visible,'Hidden tray indicator remained visible');
+        settings.set_strv('tray-hidden-apps',[]);settings.set_int('tray-visible-limit',0);
+        settings.set_boolean('glass-dock',true);settings.set_boolean('glass-dock-windows',true);
+        settings.set_boolean('glass-top-bar',true);settings.set_boolean('glass-panel-windows',true);await pause(500);
+        this._assert(this._manager._docks[0]._panel?._glass?._backdrop,'Taskbar live-window glass missing');
+        settings.set_boolean('reduced-effects',true);await pause(500);
+        this._assert(!this._manager._docks[0]._panel?._glass,'Reduced effects left taskbar glass active');
+        settings.set_boolean('reduced-effects',false);settings.set_boolean('dock-in-panel',false);await pause(500);
+        this._assert(this._manager._docks[0]._glass?._backdrop,'Floating dock live-window glass missing');
+        this._assert(this._extension._parts[1]._glass?._backdrop,'Native top bar live-window glass missing');
+        settings.set_boolean('glass-top-bar',false);settings.set_boolean('glass-dock',false);settings.set_boolean('dock-in-panel',true);await pause(400);
+    }
     _desktop() {
         this._app.get_windows().forEach(win => win.minimize());
         const settings = this._extension._settings;
@@ -491,6 +528,7 @@ export default class SmokeDriver extends Extension {
     disable() {
         this._provider?.unexport();
         if (this._providerName) Gio.bus_unown_name(this._providerName);
+        this._extraIndicator?.unexport();
         this._indicator?.unexport();
         this._timers?.forEach(id => GLib.source_remove(id));
         this._timers?.clear();
