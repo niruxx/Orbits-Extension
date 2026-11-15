@@ -25,8 +25,16 @@ prefs:
 	gnome-extensions prefs $(UUID)
 
 check:
+	@command -v gjs >/dev/null || { echo "gjs is required for make check"; exit 1; }
 	glib-compile-schemas --strict --dry-run $(SRC)/schemas
-	@for f in $(SRC)/*.js; do gjs -m $$f 2>&1 | grep -q SyntaxError && { echo "Syntax error in $$f"; gjs -m $$f; exit 1; }; done; echo "JS syntax OK"
+	gjs -m tests/checkSyntax.js $(SRC)/*.js tests/*.js
+	gjs -m tests/windowInteractions.js
+	gjs -m tests/dockFeatures.js
+	gjs -m tests/desktopFeatures.js
+	gjs -m tests/taskbarFeatures.js
+	gjs -m tests/launcherNavigation.js
+	gjs -m tests/launcherFeatures.js
+	gjs -m tests/sessionActions.js
 
 # Zip for extensions.gnome.org or `gnome-extensions install`.
 zip:
@@ -37,7 +45,7 @@ zip:
 # Source tarball (used by packaging/arch/PKGBUILD).
 dist:
 	tar --exclude=gschemas.compiled --transform 's,^,$(DIST)/,' \
-	    -czf packaging/arch/$(DIST).tar.gz extension README.md LICENSE Makefile
+	    -czf packaging/arch/$(DIST).tar.gz extension tests README.md roadmap.md LICENSE Makefile
 
 # Build the Arch package (packaging/arch/gnome-shell-extension-orbit-*.pkg.tar.zst).
 pkg-arch: dist

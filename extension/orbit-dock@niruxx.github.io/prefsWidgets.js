@@ -14,18 +14,22 @@ export const CHOICES = {
     // dock
     'dock-position': [['bottom', 'Bottom'], ['left', 'Left'], ['right', 'Right'], ['top', 'Top']],
     'dock-mode': [['intellihide', 'Intelligent autohide'], ['autohide', 'Autohide'],
-        ['fixed', 'Always visible']],
+        ['fixed', 'Always visible'], ['manual', 'Manual — toggle with reveal shortcut']],
     'intellihide-scope': [['all-windows', 'Any window'], ['focus-app', 'Windows of the focused app'],
         ['maximized', 'Maximized windows only']],
     'click-action': [['focus-or-minimize', 'Focus, minimize or cycle windows'],
         ['cycle-windows', 'Cycle through windows'],
         ['focus-or-minimize-all', 'Raise or minimize all windows'],
-        ['launch', 'Always launch a new window']],
+        ['launch', 'Always launch a new window'],
+        ['spread', 'Spread this application’s windows'], ['previews', 'Toggle window previews'], ['focus-or-previews', 'Focus or show previews']],
     'middle-click-action': [['new-window', 'Open a new window'], ['minimize', 'Minimize windows'],
         ['quit', 'Quit the app'], ['none', 'Do nothing']],
     'scroll-action': [['cycle-windows', 'Cycle app windows'], ['switch-workspace', 'Switch workspace'],
         ['none', 'Do nothing']],
-    'indicator-style': [['dots', 'Dot per window'], ['dot', 'Single dot'], ['line', 'Line'],
+    'dock-opacity-mode': [['fixed', 'Fixed'], ['dynamic', 'Dynamic — solid near windows']],
+    'number-overlays': [['never', 'Never'], ['temporary', 'After using a shortcut'], ['always', 'Always']],
+    'indicator-style': [['squares', 'Squares'], ['dashes', 'Dashes'], ['segmented', 'Segments'],
+        ['solid', 'Solid bar'], ['metro', 'Metro'], ['dots', 'Dot per window'], ['dot', 'Single dot'], ['line', 'Line'],
         ['none', 'None']],
     'show-apps-position': [['end', 'End of the dock'], ['start', 'Start of the dock'],
         ['after-favorites', 'After pinned apps']],
@@ -42,17 +46,39 @@ export const CHOICES = {
         ['minimal', 'Minimal — compact search box'],
         ['classic', 'Classic — categories beside the list'],
         ['arc', 'Arc Menu — categories beside an app grid'],
-        ['xp', 'Two-column — apps and places (Windows XP layout)']],
+        ['xp', 'Two-column — apps and places (Windows XP layout)'],
+        ['grid', 'Dashboard — wide app grid and view tabs'], ['runner', 'Runner — centered search and results'], ['sidebar', 'Sidebar — tall categories and apps']],
     'taskbar-alignment': [['left', 'Left (Windows 10)'], ['center', 'Centered (Windows 11)']],
+    'launcher-default-view': [['favorites', 'Pinned applications'], ['all', 'All applications'], ['frequent', 'Frequently used'], ['new', 'Newly installed'], ['recent', 'Recent files'], ['shortcuts', 'Custom shortcuts']],
+    'launcher-placement': [['automatic', 'Automatic — follow the taskbar'], ['center', 'Center'], ['top-left', 'Top left'], ['top-center', 'Top center'], ['top-right', 'Top right'], ['bottom-left', 'Bottom left'], ['bottom-center', 'Bottom center'], ['bottom-right', 'Bottom right']],
     // launcher
     'super-key-action': [['overview', 'Activities overview'], ['launcher', 'Orbit launcher'],
         ['none', 'Nothing']],
     'activities-action': [['overview', 'Activities overview'], ['launcher', 'Orbit launcher']],
     'show-apps-action': [['overview', 'App grid'], ['launcher', 'Orbit launcher']],
+    'desktop-sort-order': [['manual', 'Manual — drag icons to arrange'], ['name', 'Name (A–Z)'],
+        ['name-desc', 'Name (Z–A)'], ['modified-desc', 'Modified (newest first)'], ['modified', 'Modified (oldest first)'],
+        ['size-desc', 'Size (largest first)'], ['size', 'Size (smallest first)'], ['type', 'File type']],
+    'desktop-start-corner': [['top-left', 'Top left'], ['top-right', 'Top right'],
+        ['bottom-left', 'Bottom left'], ['bottom-right', 'Bottom right']],
+    'desktop-flow': [['vertical', 'Fill columns'], ['horizontal', 'Fill rows']],
+    'taskbar-position': [['follow', 'Follow Top Bar position'], ['bottom', 'Bottom'], ['top', 'Top'], ['left', 'Left'], ['right', 'Right']],
+    'taskbar-anchor': [['start', 'Start'], ['center', 'Center'], ['end', 'End']],
+    'taskbar-mode': [['fixed', 'Always visible'], ['autohide', 'Autohide'], ['intellihide', 'Intelligent autohide']],
+    'taskbar-scroll-action': [['none', 'Do nothing'], ['switch-workspace', 'Switch workspace'], ['cycle-windows', 'Cycle windows'], ['volume', 'Adjust volume']],
+    'taskbar-click-action': [['none', 'Do nothing'], ['overview', 'Overview'], ['desktop', 'Show desktop']],
+    'taskbar-middle-click-action': [['none', 'Do nothing'], ['overview', 'Overview'], ['desktop', 'Show desktop']],
+    'taskbar-double-click-action': [['none', 'Do nothing'], ['overview', 'Overview'], ['desktop', 'Show desktop'], ['maximize', 'Maximize / restore focused window']],
+    'hover-animation': [['none', 'None'], ['zoom', 'Zoom'], ['lift', 'Lift']],
     // personalization
-    'tray-position': [['top-bar', 'Top bar (right side)'], ['bottom-left', 'Bottom-left tray']],
+    'tray-position': [['top-bar', 'Top bar / taskbar'], ['bottom-left', 'Bottom-left tray']],
     'app-button-position': [['left', 'Left'], ['center', 'Center'], ['right', 'Right']],
 };
+
+CHOICES['indicator-focused-style'] = [['same', 'Same as unfocused'], ...CHOICES['indicator-style']];
+
+CHOICES['shift-click-action'] = CHOICES['click-action'];
+CHOICES['shift-middle-click-action'] = CHOICES['middle-click-action'];
 
 export function group(title, rows, description = '') {
     const g = new Adw.PreferencesGroup({title, description});
@@ -95,7 +121,13 @@ export function spinRow(settings, key, title, lower, upper, step, subtitle = '',
 /** A 0..1 double shown as a percentage slider. */
 export function percentRow(settings, key, title, subtitle = '', onUser = null) {
     const row = new Adw.ActionRow({title, subtitle});
-    const scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 5);
+    let lower = 0, upper = 100;
+    const [kind, limits] = settings.settings_schema.get_key(key).get_range().deep_unpack();
+    if (kind === 'range') {
+        const values = limits.deep_unpack();
+        lower = values[0] * 100; upper = values[1] * 100;
+    }
+    const scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, lower, upper, 5);
     scale.set_size_request(200, -1);
     scale.valign = Gtk.Align.CENTER;
     scale.draw_value = true;
@@ -225,4 +257,24 @@ export function resetButton(window, settings, keys, what) {
         dialog.present(window);
     });
     return button;
+}
+
+/** Accelerator editor; empty input disables the binding. */
+export function shortcutRow(settings, key, title) {
+    const row = new Adw.EntryRow({title, show_apply_button: true});
+    const sync = () => { row.text = settings.get_strv(key)[0] ?? ''; };
+    sync();
+    row.connect('apply', () => {
+        const text = row.text.trim();
+        const [ok, keyval, modifiers] = Gtk.accelerator_parse(text);
+        if (text && (!ok || !Gtk.accelerator_valid(keyval, modifiers))) {
+            row.add_css_class('error');
+            return;
+        }
+        row.remove_css_class('error');
+        settings.set_strv(key, text ? [Gtk.accelerator_name(keyval, modifiers)] : []);
+    });
+    const id = settings.connect(`changed::${key}`, sync);
+    row.connect('destroy', () => settings.disconnect(id));
+    return row;
 }

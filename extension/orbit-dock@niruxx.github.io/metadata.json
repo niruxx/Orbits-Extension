@@ -1,7 +1,7 @@
 {
   "uuid": "orbit-dock@niruxx.github.io",
   "name": "Orbit Shell",
-  "description": "Dock, dynamic top bar, Kicker-style app launcher, tray icons (AppIndicator), frosted-glass effects and desktop layouts (GNOME, Unity, Windows, macOS) for GNOME Shell.",
+  "description": "Dock, dynamic top bar, Kicker-style app launcher, tray icons (AppIndicator), native desktop icons, frosted-glass effects and desktop layouts (GNOME, Unity, Windows, macOS) for GNOME Shell.",
   "shell-version": [
     "48",
     "49",
@@ -10,7 +10,7 @@
   ],
   "settings-schema": "org.gnome.shell.extensions.orbit-dock",
   "url": "https://github.com/niruxx/Orbit",
-  "version-name": "0.9.0",
+  "version-name": "0.9.3",
   "session-modes": [
     "user",
     "unlock-dialog"

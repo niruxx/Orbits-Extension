@@ -18,7 +18,7 @@ export const TOP_BAR_KEYS = new Set([
     'top-bar-transparent-opacity', 'top-bar-use-custom-color', 'top-bar-color',
     'top-bar-floating', 'top-bar-radius', 'top-bar-transition',
     'top-bar-hide-activities', 'top-bar-clock-position', 'top-bar-position', 'top-bar-height',
-    'glass-top-bar', 'glass-blur-radius', 'glass-brightness', 'glass-highlight',
+    'dock-in-panel', 'glass-top-bar', 'glass-blur-radius', 'glass-brightness', 'glass-highlight',
 ]);
 
 const TOUCH_SLACK = 4;      // px below the bar that still counts as touching
@@ -70,6 +70,11 @@ export class TopBarManager {
 
     _build() {
         const c = this._config = readConfig(this._settings);
+        if (this._settings.get_boolean('dock-in-panel')) {
+            this._applyPosition(false);
+            this._applyHeight(0);
+            return;
+        }
 
         this._applyActivities(c.hideActivities);
         this._applyClock(c.clockPosition);

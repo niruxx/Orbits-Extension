@@ -5,6 +5,7 @@
 
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
+import Gio from 'gi://Gio';
 import GObject from 'gi://GObject';
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
@@ -15,8 +16,18 @@ import * as AppFavorites from 'resource:///org/gnome/shell/ui/appFavorites.js';
 import * as DND from 'resource:///org/gnome/shell/ui/dnd.js';
 import * as Layout from 'resource:///org/gnome/shell/ui/layout.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import {GlassLayer} from './glass.js';
+import {WindowPreviews} from './windowPreviews.js';
+import {ShowDesktop} from './showDesktop.js';
+import {DockStatus} from './dockStatus.js';
+import {DockShortcuts} from './dockShortcuts.js';
+import {DockPlaces} from './dockPlaces.js';
+import {WindowSpread} from './windowSpread.js';
+import {dominantColor, dockVisible} from './dockModel.js';
+import {readPanelConfig} from './taskbarModel.js';
+import {TaskbarPanel, TaskbarMenus} from './taskbarPanel.js';
 
 const LABEL_SHOW_DELAY = 300;
 const SCROLL_THROTTLE_MS = 250;
@@ -72,6 +83,51 @@ function parseHexColor(hex) {
 function readConfig(settings) {
     return {
         position: settings.get_string('dock-position'),
+        numberOverlays: settings.get_string('number-overlays'),
+        badges: settings.get_boolean('notification-badges'),
+        progress: settings.get_boolean('launcher-progress'),
+        urgentIndicator: settings.get_boolean('urgent-indicator'),
+        revealUrgent: settings.get_boolean('reveal-urgent'),
+        showTrash: settings.get_boolean('show-trash'),
+        showMounts: settings.get_boolean('show-mounts'),
+        mountsLocal: settings.get_boolean('mounts-local'),
+        mountsNetwork: settings.get_boolean('mounts-network'),
+        mountsOnlyMounted: settings.get_boolean('mounts-only-mounted'),
+        opacityMode: settings.get_string('dock-opacity-mode'),
+        minOpacity: settings.get_double('dock-min-opacity'),
+        indicatorSize: settings.get_int('indicator-size'),
+        indicatorColor: settings.get_string('indicator-color'),
+        indicatorFocusedColor: settings.get_string('indicator-focused-color'),
+        indicatorDominant: settings.get_boolean('indicator-dominant-color'),
+        fixedIconSize: settings.get_boolean('fixed-icon-size'),
+        lengthLimit: settings.get_double('dock-length-limit'),
+        showDelay: settings.get_int('show-delay'),
+        fullscreenReveal: settings.get_boolean('fullscreen-reveal'),
+        groupApps: settings.get_boolean('group-apps'),
+        windowTitles: settings.get_boolean('window-titles'),
+        appNames: settings.get_boolean('taskbar-app-names'),
+        appNameWidth: settings.get_int('taskbar-app-name-width'),
+        windowTitleWidth: settings.get_int('window-title-width'),
+        showDesktop: settings.get_boolean('show-desktop-button'),
+        desktopPeek: settings.get_boolean('show-desktop-peek'),
+        preferredMonitor: settings.get_int('preferred-monitor'),
+        primaryFavorites: settings.get_boolean('favorites-primary-only'),
+        previews: settings.get_boolean('window-previews'),
+        previewDelay: settings.get_int('preview-delay'),
+        previewSize: settings.get_int('preview-size'),
+        previewTitles: settings.get_boolean('preview-titles'),
+        previewPeek: settings.get_boolean('preview-peek'),
+        previewHideDelay: settings.get_int('preview-hide-delay'),
+        previewRatio: settings.get_double('preview-ratio'),
+        previewBackground: settings.get_string('preview-background'),
+        previewOpacity: settings.get_double('preview-opacity'),
+        previewRadius: settings.get_int('preview-radius'),
+        previewTitleSize: settings.get_int('preview-title-size'),
+        indicatorFocusedStyle: settings.get_string('indicator-focused-style'),
+        hoverAnimation: settings.get_string('hover-animation'),
+        hoverStrength: settings.get_double('hover-animation-strength'),
+        shiftClickAction: settings.get_string('shift-click-action'),
+        shiftMiddleClickAction: settings.get_string('shift-middle-click-action'),
         multiMonitor: settings.get_boolean('multi-monitor'),
         extend: settings.get_boolean('extend-to-edge'),
         margin: settings.get_int('margin'),
@@ -112,12 +168,14 @@ function readConfig(settings) {
 // per-window running indicator.
 const OrbitAppIcon = GObject.registerClass(
 class OrbitAppIcon extends AppDisplay.AppIcon {
-    _init(app, dock) {
+    _init(app, dock, win = null) {
         this._dock = dock;
+        this._orbitWindow = win;
         this._indicatorReady = false;
 
         super._init(app, {
             setSizeManually: true,
+            isDraggable: !dock.inPanel || dock.config.groupApps,
             showLabel: false,
             popupMenuSide: dock.side,
         });
@@ -141,11 +199,86 @@ class OrbitAppIcon extends AppDisplay.AppIcon {
         const [dx, dy] = {bottom: [0, 4], top: [0, -4], left: [-4, 0], right: [4, 0]}[dock.position];
         this._indicator.set_translation(dx, dy, 0);
         this._iconContainer.add_child(this._indicator);
+        this._numberBadge = new St.Label({style_class: 'orbit-number-badge',
+            x_align: Clutter.ActorAlign.START, y_align: Clutter.ActorAlign.START, visible: false});
+        this._countBadge = new St.Label({style_class: 'orbit-count-badge',
+            x_align: Clutter.ActorAlign.END, y_align: Clutter.ActorAlign.START, visible: false});
+        this._progressBar = new St.Widget({style_class: 'orbit-launcher-progress',
+            x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.END,
+            layout_manager: new Clutter.BinLayout(), visible: false});
+        this._progressFill = new St.Widget({style_class: 'orbit-launcher-progress-fill',
+            x_align: Clutter.ActorAlign.START});
+        this._progressBar.add_child(this._progressFill);
+        this._iconContainer.add_child(this._progressBar);
+        this._iconContainer.add_child(this._numberBadge);
+        this._iconContainer.add_child(this._countBadge);
+        this.connect('destroy', () => { this._orbitDestroyed = true; });
         this._indicatorReady = true;
 
-        this.app.connectObject('windows-changed', () => this.updateIndicator(), this);
+        const appName = dock.inPanel && dock.config.appNames;
+        if (appName || win && dock.config.windowTitles) {
+            this.set_child(null);
+            const row = new St.BoxLayout({style_class: 'orbit-window-button',
+                orientation: dock.horizontal ? Clutter.Orientation.HORIZONTAL : Clutter.Orientation.VERTICAL});
+            row.add_child(this._iconContainer);
+            const title = new St.Label({text: appName ? app.get_name() : win.get_title() || app.get_name(),
+                style_class: 'orbit-window-title', y_align: Clutter.ActorAlign.CENTER,
+                style: `width: ${dock.horizontal ? (appName ? dock.config.appNameWidth : dock.config.windowTitleWidth) : Math.max(16, dock.panelConfig.size - 12)}px; ${dock.horizontal ? '' : 'font-size: 9px; max-height: 30px;'}`});
+            title.clutter_text.ellipsize = 3;
+            if (!dock.horizontal) title.clutter_text.line_wrap = true;
+            if (appName) this._orbitAppNameLabel = title;
+            row.add_child(title);
+            this.set_child(row);
+            if (!appName) win.connectObject('notify::title', () => {
+                title.text = win.get_title() || app.get_name();
+                this._orbitLabel = title.text;
+                this.accessible_name = title.text;
+            }, this);
+        }
+        this.app.connectObject('windows-changed', () => {
+            this.updateIndicator();
+            this._dock._queueRedisplay();
+        }, this);
         this.connect('scroll-event', (_actor, event) => this._dock.onAppScroll(this, event));
         this.updateIndicator();
+    }
+
+    _workspaceWindows() {
+        return (this._orbitWindow ? [this._orbitWindow] : this.app.get_windows())
+            .filter(win => !win.skip_taskbar && win.get_compositor_private());
+    }
+
+    _moveToWorkspace(workspace) {
+        const primaryOnly = new Gio.Settings({schema_id: 'org.gnome.mutter'}).get_boolean('workspaces-only-on-primary');
+        for (const win of this._workspaceWindows()) {
+            if (win.is_on_all_workspaces()) win.unstick();
+            if (primaryOnly && win.get_monitor() !== Main.layoutManager.primaryIndex) win.move_to_monitor(Main.layoutManager.primaryIndex);
+            win.change_workspace(workspace);
+        }
+    }
+
+    popupMenu(button) {
+        const result = super.popupMenu(button);
+        if (!this._dock.inPanel || !this._menu?.isOpen) return result;
+        for (const item of this._menu._getMenuItems()) if (item._orbitWorkspaceMenu) item.destroy();
+        const windows = this._workspaceWindows();
+        if (!windows.length) return result;
+        const submenu = new PopupMenu.PopupSubMenuMenuItem(this._orbitWindow ? 'Move Window to Workspace' : 'Move Application to Workspace');
+        submenu._orbitWorkspaceMenu = true;
+        const manager = global.workspace_manager;
+        const names = new Gio.Settings({schema_id: 'org.gnome.desktop.wm.preferences'}).get_strv('workspace-names');
+        for (let index = 0; index < manager.n_workspaces; index++) {
+            const workspace = manager.get_workspace_by_index(index);
+            const label = `Workspace ${index + 1}${names[index] ? ` — ${names[index]}` : ''}`;
+            const item = submenu.menu.addAction(label, () => this._moveToWorkspace(workspace));
+            item.setSensitive(!windows.every(win => !win.is_on_all_workspaces() && win.get_workspace() === workspace));
+        }
+        submenu.menu.addAction('New Workspace', () => {
+            const workspace = manager.append_new_workspace(false, global.get_current_time());
+            this._moveToWorkspace(workspace);
+        });
+        this._menu.addMenuItem(submenu);
+        return result;
     }
 
     _updateRunningStyle() {
@@ -155,28 +288,62 @@ class OrbitAppIcon extends AppDisplay.AppIcon {
     }
 
     updateIndicator() {
-        const style = this._dock.config.indicatorStyle;
-        const windows = this._dock.getAppWindows(this.app);
+        if (!this._indicatorReady || this._orbitDestroyed)
+            return;
+        const config = this._dock.config;
+        if (this._orbitAppNameLabel) this._orbitAppNameLabel.visible = this.app.get_windows().some(win => !win.skip_taskbar);
+        let style = config.indicatorStyle;
+        const windows = this._orbitWindow ? [this._orbitWindow] : this._dock.getAppWindows(this.app);
         const running = this.app.state !== Shell.AppState.STOPPED;
-
-        let count = 0;
-        if (style === 'dots')
-            count = Math.min(windows.length || (running ? 1 : 0), MAX_INDICATOR_DOTS);
-        else if (style === 'dot' || style === 'line')
-            count = running ? 1 : 0;
-
-        this._indicator.destroy_all_children();
-        for (let i = 0; i < count; i++) {
-            this._indicator.add_child(new St.Widget({
-                style_class: style === 'line' ? 'orbit-dock-line' : 'orbit-dock-dot',
-            }));
-        }
-
-        const focused = Shell.WindowTracker.get_default().focus_app === this.app;
+        const focused = this._orbitWindow ? global.display.focus_window === this._orbitWindow
+            : Shell.WindowTracker.get_default().focus_app === this.app;
+        if (focused && config.indicatorFocusedStyle !== 'same') style = config.indicatorFocusedStyle;
         if (focused)
             this.add_style_class_name('orbit-focused');
         else
             this.remove_style_class_name('orbit-focused');
+        if (config.indicatorDominant && !this._dominantRequested) {
+            this._dominantRequested = true;
+            this._dock._manager.loadIconColor(this.app, color => {
+                if (!this._orbitDestroyed) {
+                    this._dominantColor = color;
+                    this.updateIndicator();
+                }
+            });
+        }
+        const rgb = parseHexColor(focused ? config.indicatorFocusedColor : config.indicatorColor);
+        const color = config.indicatorDominant && this._dominantColor || `rgb(${rgb.join(',')})`;
+        const multi = ['dots', 'squares', 'dashes', 'segmented', 'metro'].includes(style);
+        const count = style === 'none' ? 0 : multi
+            ? Math.min(windows.length || (running ? 1 : 0), MAX_INDICATOR_DOTS) : running ? 1 : 0;
+        this._indicator.destroy_all_children();
+        for (let i = 0; i < count; i++) {
+            const size = config.indicatorSize;
+            let length = size;
+            if (style === 'line') length = 18;
+            if (style === 'dashes') length = size * 2;
+            if (style === 'solid') length = Math.max(18, this._dock.iconSize * 0.65);
+            if (style === 'segmented') length = Math.max(size, (this._dock.iconSize - (count - 1) * 3) / count);
+            if (style === 'metro') length = i === 0 ? 18 : size;
+            const width = this._dock.horizontal ? length : size;
+            const height = this._dock.horizontal ? size : length;
+            const radius = ['dot', 'dots', 'line', 'dashes'].includes(style) ? size : 0;
+            this._indicator.add_child(new St.Widget({style_class: 'orbit-running-mark',
+                style: `width: ${width}px; height: ${height}px; border-radius: ${radius}px; background-color: ${color};`}));
+        }
+        const status = this._dock._manager.status.get(this.app.get_id());
+        this._countBadge.text = status.count > 99 ? '99+' : `${status.count}`;
+        this._countBadge.visible = config.badges && status.count > 0;
+        this._progressBar.visible = config.progress && status.progressVisible;
+        this._progressFill.set_style(`width: ${32 * status.progress}px; height: 4px;`);
+        const urgent = status.urgent || windows.some(win => win.urgent || win.demands_attention);
+        if (urgent && config.urgentIndicator)
+            this.add_style_class_name('orbit-urgent');
+        else
+            this.remove_style_class_name('orbit-urgent');
+        if (urgent && !this._wasUrgent && config.revealUrgent)
+            this._dock.revealFor(4000);
+        this._wasUrgent = urgent;
     }
 
     activate(button) {
@@ -209,11 +376,12 @@ class Dock {
         this.monitorIndex = monitorIndex;
         // Taskbar mode: the apps live inside GNOME's top bar, wherever it is.
         this.inPanel = this.config.inPanel;
-        this.position = this.inPanel
-            ? (this.config.panelAtBottom ? 'bottom' : 'top') : this.config.position;
+        this.panelConfig = this.inPanel ? readPanelConfig(manager.settings, monitorIndex) : null;
+        if (this.inPanel) this.config = {...this.config, mode: this.panelConfig.mode};
+        this.position = this.panelConfig?.edge ?? this.config.position;
         this.side = SIDES[this.position] ?? St.Side.BOTTOM;
         this.horizontal = this.position === 'bottom' || this.position === 'top';
-        this.iconSize = this.inPanel ? this.config.taskbarIconSize : this.config.iconSize;
+        this.iconSize = this.inPanel ? Math.min(this.config.taskbarIconSize, Math.max(16, this.panelConfig.size - 8)) : this.config.iconSize;
 
         this._icons = new Map();
         this._runningOrder = [];
@@ -223,6 +391,8 @@ class Dock {
         this._dragging = false;
         this._lastScroll = 0;
         this._trackedWindows = new Set();
+        this._previews = new WindowPreviews(this);
+        this._spread = new WindowSpread(this);
 
         this._appSystem = Shell.AppSystem.get_default();
         this._tracker = Shell.WindowTracker.get_default();
@@ -231,9 +401,13 @@ class Dock {
             this._buildPanelActors();
         else
             this._buildActors();
+        if (this.config.showTrash || this.config.showMounts) {
+            this._places = new DockPlaces(this);
+            if (this.inPanel) this._panel.addPlaces(this._places.actor);
+            else this._background.add_child(this._places.actor);
+        }
         this._connectSignals();
-        if (!this.inPanel)
-            this._setupBarrier();
+        this._setupBarrier();
 
         this._redisplay();
         this._updateVisibility(false);
@@ -296,7 +470,11 @@ class Dock {
         const appsPos = this.config.showAppsPosition;
         if (this._showAppsButton && appsPos === 'start')
             this._background.add_child(this._showAppsButton);
-        this._background.add_child(this._box);
+        this._appScroll = new St.ScrollView({child: this._box,
+            hscrollbar_policy: this.horizontal ? St.PolicyType.AUTOMATIC : St.PolicyType.NEVER,
+            vscrollbar_policy: this.horizontal ? St.PolicyType.NEVER : St.PolicyType.AUTOMATIC,
+            overlay_scrollbars: true});
+        this._background.add_child(this._appScroll);
         if (this._showAppsButton && appsPos === 'after-favorites')
             this._box.add_child(this._showAppsButton);
         else if (this._showAppsButton && appsPos !== 'start')
@@ -336,7 +514,7 @@ class Dock {
         });
         Main.layoutManager.addChrome(this._container, {
             affectsStruts: this.config.mode === 'fixed',
-            trackFullscreen: true,
+            trackFullscreen: !this.config.fullscreenReveal,
         });
 
         this._slider.connect('notify::hover', () => this._onHoverChanged());
@@ -349,43 +527,28 @@ class Dock {
 
     /** Taskbar mode: start button + app icons inside GNOME's top bar. */
     _buildPanelActors() {
-        this._background = new St.BoxLayout({
-            style_class: `orbit-taskbar orbit-${this.position}`,
-            reactive: true,
-            y_align: Clutter.ActorAlign.FILL,
-        });
-        this._box = new St.BoxLayout({style_class: 'orbit-dock-box orbit-taskbar-box'});
+        const orientation = this.horizontal ? Clutter.Orientation.HORIZONTAL : Clutter.Orientation.VERTICAL;
+        this._box = new St.BoxLayout({style_class: 'orbit-dock-box orbit-taskbar-box', orientation});
         this._box._delegate = this;
-
-        if (this.config.showAppsButton)
-            this._showAppsButton = this._createShowAppsButton();
-        const appsPos = this.config.showAppsPosition;
-        if (this._showAppsButton && appsPos === 'start')
-            this._background.add_child(this._showAppsButton);
-        this._background.add_child(this._box);
-        if (this._showAppsButton && appsPos === 'after-favorites')
-            this._box.add_child(this._showAppsButton);
-        else if (this._showAppsButton && appsPos !== 'start')
-            this._background.add_child(this._showAppsButton);
-
-        const target = this.config.taskbarAlignment === 'center'
-            ? Main.panel._centerBox : Main.panel._leftBox;
-        if (target === Main.panel._centerBox)
-            target.insert_child_at_index(this._background, 0);
-        else
-            target.add_child(this._background);
-
+        if (this.config.showAppsButton) this._showAppsButton = this._createShowAppsButton();
+        this._taskbarScroll = new St.ScrollView({child: this._box, x_expand: false, y_expand: false,
+            hscrollbar_policy: this.horizontal ? St.PolicyType.EXTERNAL : St.PolicyType.NEVER,
+            vscrollbar_policy: this.horizontal ? St.PolicyType.NEVER : St.PolicyType.EXTERNAL,
+            overlay_scrollbars: true});
+        this._desktopButton = new ShowDesktop(this.config.desktopPeek, () => this._previews.close());
+        this._panel = new TaskbarPanel(this);
+        this._container = this._panel.actor;
+        this._slider = this._panel.slider;
+        this._background = this._panel.body;
         this._label = new St.Label({style_class: 'dash-label orbit-dock-label'});
         this._label.hide();
         Main.layoutManager.addTopChrome(this._label);
-
-        this._background.connect('destroy', () => {
+        this._container.connect('destroy', () => {
             this._destroyed = true;
-            laterRemove(this._redisplayLater);
-            laterRemove(this._geometryLater);
+            laterRemove(this._redisplayLater); laterRemove(this._geometryLater);
             this._redisplayLater = this._geometryLater = 0;
         });
-        this._background.connect('scroll-event', (_a, event) => this._onDockScroll(event));
+        this._panel.updateGeometry();
     }
 
     _marginStyle() {
@@ -397,11 +560,13 @@ class Dock {
     _backgroundStyle() {
         const c = this.config;
         const parts = [];
+        const opacity = c.opacityMode === 'dynamic' && !this._dynamicSolid ? c.minOpacity : c.opacity;
+        parts.push(`transition-duration: ${c.animationTime}ms;`);
         if (c.useCustomColor) {
             const [r, g, b] = parseHexColor(c.color);
-            parts.push(`background-color: rgba(${r}, ${g}, ${b}, ${c.opacity});`);
+            parts.push(`background-color: rgba(${r}, ${g}, ${b}, ${opacity});`);
         } else {
-            parts.push(`background-color: rgba(36, 36, 40, ${c.opacity});`);
+            parts.push(`background-color: rgba(36, 36, 40, ${opacity});`);
         }
         if (c.extend) {
             // Square panel with a hairline only on the side facing the screen.
@@ -427,8 +592,23 @@ class Dock {
             track_hover: true,
             child: icon,
         });
+        button._orbitEdge = this.position;
         button._orbitIcon = icon;
-        button._orbitLabel = 'Show Apps';
+        const buttonBox = new St.BoxLayout({orientation: this.horizontal ? Clutter.Orientation.HORIZONTAL : Clutter.Orientation.VERTICAL, style: 'spacing: 6px;'});
+        button.child = null; buttonBox.add_child(icon);
+        const label = new St.Label({y_align: Clutter.ActorAlign.CENTER, style: `max-width: ${this.horizontal ? 160 : Math.max(16, (this.panelConfig?.size ?? this.iconSize) - 8)}px;`}); label.clutter_text.ellipsize = 3; buttonBox.add_child(label); button.child = buttonBox;
+        const updateAppearance = () => {
+            const settings = this._manager.settings;
+            const name = settings.get_string('launcher-button-icon');
+            icon.icon_name = /^[\w.-]{1,128}$/.test(name) ? name : 'view-app-grid-symbolic';
+            icon.icon_size = Math.min(settings.get_int('launcher-button-icon-size') || this.iconSize, this.inPanel ? this.panelConfig.size - 8 : 96);
+            label.text = settings.get_string('launcher-button-label').slice(0, 80);
+            label.visible = settings.get_boolean('launcher-button-show-label');
+            button._orbitLabel = label.text || 'Applications'; button.accessible_name = button._orbitLabel;
+            button.set_style(settings.get_boolean('launcher-button-custom-color') ? `color: ${settings.get_string('launcher-button-color')};` : '');
+        };
+        this._manager.settings.connectObject('changed', (_settings, key) => { if (key.startsWith('launcher-button-')) { updateAppearance(); this._queueGeometry(); } }, button);
+        updateAppearance();
 
         button.connect('clicked', () => {
             this._hideLabel();
@@ -482,6 +662,7 @@ class Dock {
             this._queueIntellihide();
         }, this);
 
+        global.stage.connectObject('notify::key-focus', () => this._queueIntellihide(), this);
         global.workspace_manager.connectObject('active-workspace-changed', () => {
             this._queueRedisplay();
             this._queueIntellihide();
@@ -493,13 +674,21 @@ class Dock {
                 this._queueIntellihide();
             },
             'restacked', () => this._queueIntellihide(),
-            'notify::focus-window', () => this._queueIntellihide(),
+            'window-entered-monitor', () => { this._queueRedisplay(); this._queueIntellihide(); },
+            'window-left-monitor', () => { this._queueRedisplay(); this._queueIntellihide(); },
+            'in-fullscreen-changed', () => this._queueIntellihide(),
+            'window-demands-attention', () => this._icons.forEach(icon => icon.updateIndicator()),
+            'window-marked-urgent', () => this._icons.forEach(icon => icon.updateIndicator()),
+            'notify::focus-window', () => {
+                this._queueIntellihide();
+                this._icons.forEach(icon => icon.updateIndicator());
+            },
             'grab-op-end', () => this._queueIntellihide(),
             this);
         global.get_window_actors().forEach(actor => this._trackWindow(actor.meta_window));
 
         Main.overview.connectObject(
-            'showing', () => this._updateVisibility(),
+            'showing', () => { this._previews.close(); this._spread.close(); this._updateVisibility(); },
             'hidden', () => this._updateVisibility(),
             'item-drag-begin', () => {
                 this._dragging = true;
@@ -529,6 +718,8 @@ class Dock {
             'position-changed', () => this._queueIntellihide(),
             'size-changed', () => this._queueIntellihide(),
             'notify::minimized', () => this._queueIntellihide(),
+            'notify::urgent', () => this._icons.forEach(icon => icon.updateIndicator()),
+            'notify::demands-attention', () => this._icons.forEach(icon => icon.updateIndicator()),
             'workspace-changed', update,
             'notify::skip-taskbar', update,
             'unmanaged', () => {
@@ -540,7 +731,7 @@ class Dock {
     }
 
     _setupBarrier() {
-        if (this.config.mode === 'fixed')
+        if (this.config.mode === 'manual' || this.config.mode === 'fixed' && !this.config.fullscreenReveal)
             return;
 
         const monitor = Main.layoutManager.monitors[this.monitorIndex];
@@ -551,8 +742,22 @@ class Dock {
             Math.max(this.config.pressure, 1), 1000,
             Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW);
         this._pressureBarrier.connect('trigger', () => {
-            this._pointerRevealed = true;
-            this._updateVisibility();
+            if (this._edgeRevealId || !this.config.fullscreenReveal && this._fullscreen())
+                return;
+            this._edgeRevealId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, this.config.showDelay, () => {
+                this._edgeRevealId = 0;
+                const [px, py] = global.get_pointer();
+                const {x, y, width, height} = monitor;
+                const atEdge = {left: Math.abs(px - x) <= 3, right: Math.abs(px - (x + width - 1)) <= 3,
+                    top: Math.abs(py - y) <= 3, bottom: Math.abs(py - (y + height - 1)) <= 3}[this.position];
+                if (atEdge) {
+                    this._pointerRevealed = true;
+                    this._updateVisibility();
+                    // Keyboard/urgency and edge reveals expire even if the pointer never enters the dock.
+                    this._scheduleEdgeExpiry();
+                }
+                return GLib.SOURCE_REMOVE;
+            });
         });
 
         const {x, y, width, height} = monitor;
@@ -598,7 +803,9 @@ class Dock {
         if (this._destroyed)
             return;
         const favMap = AppFavorites.getAppFavorites().getFavoriteMap();
-        const favorites = this.config.showFavorites ? Object.values(favMap) : [];
+        const favorites = this.config.showFavorites &&
+            (!this.config.primaryFavorites || this.monitorIndex === Main.layoutManager.primaryIndex)
+            ? Object.values(favMap) : [];
         const favIds = new Set(favorites.map(a => a.get_id()));
 
         let running = [];
@@ -620,7 +827,12 @@ class Dock {
         const orderedRunning = this._runningOrder.map(id => runningById.get(id));
 
         const apps = [...favorites, ...orderedRunning];
-        const wanted = new Set(apps.map(a => a.get_id()));
+        const entries = apps.flatMap((app, index) => {
+            const windows = this.inPanel && !this.config.groupApps ? this._sortedWindows(app) : [];
+            return (windows.length ? windows : [null]).map(win => ({app, win, index,
+                id: win ? `${app.get_id()}:${win.get_stable_sequence()}` : app.get_id()}));
+        });
+        const wanted = new Set(entries.map(entry => entry.id));
 
         for (const [id, icon] of this._icons) {
             if (!wanted.has(id)) {
@@ -642,45 +854,55 @@ class Dock {
 
         const ordered = [];
         const buttonInBox = this._showAppsButton?.get_parent() === this._box;
-        apps.forEach((app, i) => {
-            if (i === favorites.length) {
+        let boundaryInserted = false;
+        entries.forEach(({app, win, index}) => {
+            if (!boundaryInserted && index >= favorites.length) {
+                boundaryInserted = true;
                 if (buttonInBox)
                     ordered.push(this._showAppsButton);
                 if (this._separator)
                     ordered.push(this._separator);
             }
-            ordered.push(this._getOrCreateIcon(app));
+            ordered.push(this._getOrCreateIcon(app, win));
         });
         if (buttonInBox && apps.length === favorites.length)
             ordered.push(this._showAppsButton); // no running apps: right after the pinned ones
         ordered.forEach((actor, i) => this._box.set_child_at_index(actor, i));
         this._icons.forEach(icon => icon.updateIndicator());
+        this.showNumbers(false);
 
-        this._applyIconSize(this.inPanel ? this.config.taskbarIconSize : this.config.iconSize);
+        this._applyIconSize(this.inPanel ? Math.min(this.config.taskbarIconSize, Math.max(16, this.panelConfig.size - 8)) : this.config.iconSize);
         this._queueGeometry();
     }
 
-    _getOrCreateIcon(app) {
-        const id = app.get_id();
+    _getOrCreateIcon(app, win = null) {
+        const id = win ? `${app.get_id()}:${win.get_stable_sequence()}` : app.get_id();
         let icon = this._icons.get(id);
         if (icon)
             return icon;
 
-        icon = new OrbitAppIcon(app, this);
+        icon = new OrbitAppIcon(app, this, win);
         icon.label_actor = null;
-        icon.accessible_name = app.get_name();
-        icon._orbitLabel = app.get_name();
+        icon.accessible_name = win?.get_title() || app.get_name();
+        icon._orbitLabel = icon.accessible_name;
         icon.icon.setIconSize(this.iconSize);
-        icon.connect('notify::hover', () => this._syncLabel(icon));
+        icon.connect('notify::hover', () => {
+            this._animateIcon(icon);
+            this._syncLabel(icon);
+            this._previews.hover(icon);
+        });
         icon.connect('sync-tooltip', () => this._syncLabel(icon));
         icon.connect('clicked', () => this._hideLabel());
         icon.connect('menu-state-changed', (_i, open) => {
             this._menusOpen = Math.max(0, this._menusOpen + (open ? 1 : -1));
-            if (open)
+            if (open) {
                 this._hideLabel();
+                this._previews.close();
+            }
             this._updateVisibility();
         });
         icon.connect('destroy', () => {
+            this._previews.forget(icon);
             if (this._labelSource === icon)
                 this._hideLabel();
         });
@@ -689,11 +911,26 @@ class Dock {
         return icon;
     }
 
+    _animateIcon(icon) {
+        const hovered = icon.hover && !icon._menu?.isOpen;
+        const mode = this.config.hoverAnimation;
+        const strength = this.config.hoverStrength;
+        const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor;
+        icon.icon.set_pivot_point(0.5, 0.5);
+        const lift = hovered && mode === 'lift' ? this.iconSize * strength * scale : 0;
+        const [x, y] = {bottom: [0, -lift], top: [0, lift], left: [lift, 0], right: [-lift, 0]}[this.position];
+        icon.icon.ease({scale_x: hovered && mode === 'zoom' ? 1 + strength : 1,
+            scale_y: hovered && mode === 'zoom' ? 1 + strength : 1, translation_x: x, translation_y: y,
+            duration: (St.Settings.get().enable_animations ?? true) ? 140 : 0,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD});
+    }
+
     _applyIconSize(size) {
         this.iconSize = size;
+        this._places?.setIconSize(size);
         this._icons.forEach(icon => icon.icon.setIconSize(size));
         if (this._showAppsButton)
-            this._showAppsButton._orbitIcon.icon_size = size;
+            this._showAppsButton._orbitIcon.icon_size = Math.min(this._manager.settings.get_int('launcher-button-icon-size') || size, this.inPanel ? this.panelConfig.size - 8 : 96);
     }
 
     // ---- geometry -----------------------------------------------------
@@ -726,12 +963,29 @@ class Dock {
     }
 
     _updateGeometry(shrinkPass = false) {
-        if (this._destroyed || this.inPanel)
-            return;
+        if (this._destroyed) return;
+        if (this.inPanel) { this._panel.updateGeometry(); this._queueIntellihide(); return; }
         const monitor = Main.layoutManager.monitors[this.monitorIndex];
         if (!monitor)
             return;
         const area = this._availableArea(monitor);
+        const fraction = this.config.lengthLimit;
+        if (this.horizontal) {
+            const length = area.width * fraction;
+            area.x += (area.width - length) / 2;
+            area.width = length;
+        } else {
+            const length = area.height * fraction;
+            area.y += (area.height - length) / 2;
+            area.height = length;
+        }
+        const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor;
+        const areaLength = this.horizontal ? area.width : area.height;
+        const extras = this._places?.actor.get_children().length ?? 0;
+        const startButtonLength = this._showAppsButton && this._showAppsButton.get_parent() !== this._box
+            ? (this.horizontal ? this._showAppsButton.get_preferred_width(-1)[1] : this._showAppsButton.get_preferred_height(-1)[1]) : 0;
+        const budget = Math.max(32 * scale, areaLength - (extras * (this.iconSize + 16) + 20) * scale - startButtonLength);
+        this._appScroll.set_style(`max-${this.horizontal ? 'width' : 'height'}: ${budget / scale}px;`);
         const extend = this.config.extend;
 
         // The container follows its content's natural size (so it grows and
@@ -748,11 +1002,12 @@ class Dock {
         const [, natH] = this._container.get_preferred_height(natW);
 
         // Shrink icons when the dock doesn't fit along its edge.
-        const length = this.horizontal ? natW : natH;
+        const [, contentLength] = this.horizontal ? this._box.get_preferred_width(-1) : this._box.get_preferred_height(-1);
+        const length = Math.max(this.horizontal ? natW : natH, contentLength + areaLength - budget);
         const available = this.horizontal ? area.width : area.height;
-        if (!shrinkPass && !extend && length > available && this.iconSize > 16) {
+        if (!shrinkPass && !this.config.fixedIconSize && length > available && this.iconSize > 16) {
             const count = Math.max(this._icons.size + (this._showAppsButton ? 1 : 0), 1);
-            const overflowPerIcon = (length - available) / count;
+            const overflowPerIcon = (length - available) / count / scale;
             this._applyIconSize(Math.max(16, Math.floor(this.iconSize - overflowPerIcon - 2)));
             this._updateGeometry(true);
             return;
@@ -813,7 +1068,7 @@ class Dock {
     }
 
     _queueIntellihide() {
-        if (this.inPanel || this.config.mode !== 'intellihide' || this._intellihideId)
+        if (this._intellihideId)
             return;
         this._intellihideId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 60, () => {
             this._intellihideId = 0;
@@ -822,13 +1077,13 @@ class Dock {
         });
     }
 
-    _windowsOverlapDock() {
+    _windowsOverlapDock(allWindows = false) {
         const rect = this._dockRect();
         if (rect.width <= 0 || rect.height <= 0)
             return false;
 
         const ws = global.workspace_manager.get_active_workspace();
-        const scope = this.config.intellihideScope;
+        const scope = allWindows ? 'all-windows' : this.config.intellihideScope;
         const focusApp = this._tracker.focus_app;
 
         return global.get_window_actors().some(actor => {
@@ -847,22 +1102,88 @@ class Dock {
         });
     }
 
+    _fullscreen() {
+        return global.display.get_monitor_in_fullscreen(this.monitorIndex);
+    }
+
+    _scheduleEdgeExpiry() {
+        if (this._edgeExpiryId)
+            GLib.source_remove(this._edgeExpiryId);
+        this._edgeExpiryId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1500, () => {
+            this._edgeExpiryId = 0;
+            if (!this._slider.hover)
+                this._pointerRevealed = false;
+            this._updateVisibility();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    revealFor(duration = 2500) {
+        if (this._fullscreen() && !this.config.fullscreenReveal)
+            return;
+        if (this._revealTimeout)
+            GLib.source_remove(this._revealTimeout);
+        this._forcedReveal = true;
+        this._updateVisibility();
+        this._revealTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, duration, () => {
+            this._revealTimeout = 0;
+            this._forcedReveal = false;
+            this._updateVisibility();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    toggleReveal() {
+        if (this.config.mode === 'manual') {
+            this._manualVisible = !this._manualVisible;
+            this._updateVisibility();
+        } else {
+            this.revealFor();
+        }
+    }
+
+    shortcutIcons() {
+        const seen = new Set();
+        return this._box.get_children().filter(icon => {
+            if (!(icon instanceof OrbitAppIcon) || seen.has(icon.app.get_id()))
+                return false;
+            seen.add(icon.app.get_id());
+            return true;
+        });
+    }
+
+    showNumbers(temporary) {
+        this._icons.forEach(icon => icon._numberBadge.hide());
+        const mode = this.config.numberOverlays;
+        if (!this._manager.settings.get_boolean('number-shortcuts') || mode === 'never' || mode === 'temporary' && !temporary)
+            return;
+        this.shortcutIcons().slice(0, 10).forEach((icon, i) => {
+            icon._numberBadge.text = `${(i + 1) % 10}`;
+            icon._numberBadge.show();
+        });
+    }
+
     _shouldShow() {
-        if (this.config.mode === 'fixed')
-            return true;
-        if (Main.overview.visibleTarget || this._menusOpen > 0 || this._dragging)
-            return true;
-        if (this._slider.hover || this._pointerRevealed)
-            return true;
-        if (this.config.mode === 'autohide')
-            return false;
-        return !this._windowsOverlapDock();
+        const focus = global.stage.get_key_focus();
+        return dockVisible({mode: this.config.mode, fullscreen: this._fullscreen(),
+            fullscreenReveal: this.config.fullscreenReveal, forced: this._forcedReveal,
+            menu: this._menusOpen > 0 || !!(focus && this._container.contains(focus)) || !!(this._manager.launcher?._root && this._manager.launcher._monitorIndex === this.monitorIndex), preview: this._previewOpen, manualVisible: this._manualVisible,
+            overview: Main.overview.visibleTarget, dragging: this._dragging,
+            hover: this._slider.hover, edge: this._pointerRevealed,
+            overlap: this.config.mode === 'intellihide' && this._windowsOverlapDock()});
     }
 
     _updateVisibility(animate = true) {
-        if (this.inPanel)
-            return; // the taskbar is always shown with the bar
+        if (this.inPanel) this._panel.updateBackground();
+        if (!this.inPanel && this.config.opacityMode === 'dynamic') {
+            const solid = this._windowsOverlapDock(true);
+            if (solid !== this._dynamicSolid) {
+                this._dynamicSolid = solid;
+                this._background.set_style(this._backgroundStyle());
+            }
+        }
         const show = this._shouldShow();
+        this._container.clip_to_allocation = !show;
         if (show === this._shown)
             return;
         this._shown = show;
@@ -887,7 +1208,7 @@ class Dock {
     // ---- labels -------------------------------------------------------
 
     _syncLabel(item) {
-        const hovered = item.hover && !(item._menu?.isOpen);
+        const hovered = item.hover && !item._menu?.isOpen && !this._previewOpen;
         if (hovered) {
             if (this._labelTimeoutId)
                 GLib.source_remove(this._labelTimeoutId);
@@ -904,7 +1225,7 @@ class Dock {
     }
 
     _showLabel(item) {
-        if (!item._orbitLabel || !item.get_stage())
+        if (this._previewOpen || !item._orbitLabel || !item.get_stage())
             return;
         this._labelSource = item;
         this._labelShowing = true;
@@ -974,27 +1295,34 @@ class Dock {
         Main.activateWindow(windows[next]);
     }
 
-    activateApp(icon, button) {
+    activateApp(icon, button, state = null) {
         const app = icon.app;
         const event = Clutter.get_current_event();
-        const modifiers = event ? event.get_state() : 0;
+        const modifiers = state ?? (event ? event.get_state() : 0);
         const ctrl = (modifiers & Clutter.ModifierType.CONTROL_MASK) !== 0;
         const shift = (modifiers & Clutter.ModifierType.SHIFT_MASK) !== 0;
-        const windows = this.getAppWindows(app);
+        const windows = icon._orbitWindow ? [icon._orbitWindow] : this.getAppWindows(app);
         const wasOverview = Main.overview.visible;
 
         if (button === Clutter.BUTTON_MIDDLE) {
-            this._middleClick(icon, windows);
+            this._middleClick(icon, windows, shift ? this.config.shiftMiddleClickAction : this.config.middleClickAction);
             return;
         }
 
-        if (ctrl || shift || !windows.length || this.config.clickAction === 'launch') {
+        const action = shift ? this.config.shiftClickAction : this.config.clickAction;
+        if (ctrl || !windows.length || action === 'launch') {
+            this._previews.close();
             icon.animateLaunch();
             if (windows.length && app.can_open_new_window())
                 app.open_new_window(-1);
             else
                 app.activate();
             Main.overview.hide();
+            return;
+        }
+
+        if (action === 'spread') {
+            this._spread.toggle(icon);
             return;
         }
 
@@ -1005,7 +1333,18 @@ class Dock {
         }
 
         const focusedIsOurs = windows.includes(global.display.focus_window);
-        switch (this.config.clickAction) {
+        if (action !== 'previews' && action !== 'focus-or-previews')
+            this._previews.close();
+        switch (action) {
+        case 'previews':
+            this._previews.toggle(icon);
+            break;
+        case 'focus-or-previews':
+            if (windows.length > 1)
+                this._previews.toggle(icon);
+            else
+                Main.activateWindow(windows[0]);
+            break;
         case 'cycle-windows':
             if (focusedIsOurs)
                 this._cycle(app);
@@ -1030,9 +1369,10 @@ class Dock {
         }
     }
 
-    _middleClick(icon, windows) {
+    _middleClick(icon, windows, action) {
+        this._previews.close();
         const app = icon.app;
-        switch (this.config.middleClickAction) {
+        switch (action) {
         case 'new-window':
             icon.animateLaunch();
             if (app.can_open_new_window())
@@ -1150,7 +1490,7 @@ class Dock {
 
     destroy() {
         this._cancelHideTimeout();
-        for (const id of ['_intellihideId', '_labelTimeoutId']) {
+        for (const id of ['_intellihideId', '_labelTimeoutId', '_edgeRevealId', '_edgeExpiryId', '_revealTimeout']) {
             if (this[id]) {
                 GLib.source_remove(this[id]);
                 this[id] = 0;
@@ -1172,30 +1512,54 @@ class Dock {
         this._appSystem.disconnectObject(this);
         this._tracker.disconnectObject(this);
         global.workspace_manager.disconnectObject(this);
+        global.stage.disconnectObject(this);
         global.display.disconnectObject(this);
         Main.overview.disconnectObject(this);
         this._trackedWindows.forEach(w => w.disconnectObject(this));
         this._trackedWindows.clear();
 
+        this._spread.destroy();
+        this._previews.destroy();
+        this._panel?.removePlaces();
+        this._places?.destroy();
         this._icons.clear();
         this._label.destroy();
-        (this._container ?? this._background).destroy();
+        if (this.inPanel) this._panel.destroy();
+        else this._container.destroy();
     }
 }
 
 // Keys owned by the other Orbit Shell parts; changing them must not rebuild docks.
-const NON_DOCK_KEY = /^(top-bar-|launcher-|tray-|app-button-|super-key-action|activities-action|skip-startup-overview|glass-top-bar|glass-launcher)/;
+const NON_DOCK_KEY = /^(desktop-|top-bar-|launcher-|tray-|app-button-|super-key-action|activities-action|skip-startup-overview|glass-top-bar|glass-launcher)/;
 
 export class DockManager {
-    constructor(settings, launcher = null) {
+    constructor(settings, launcher = null, tray = null, openPreferences = () => {}) {
         this.settings = settings;
         this.launcher = launcher;
+        this._previousPanelSource = launcher?._taskbarSource;
+        this._previousPanelChanged = launcher?._taskbarChanged;
+        this._panelChanged = () => this._docks.forEach(dock => dock._updateVisibility());
+        this._panelSource = index => {
+            const dock = this._docks.find(item => item.inPanel && item.monitorIndex === index);
+            const allowed = dock && (!dock._fullscreen() || dock.config.fullscreenReveal);
+            if (allowed) { dock.revealFor(); dock._applyTranslation(true, false); }
+            return allowed && dock._showAppsButton?.mapped ? dock._showAppsButton : dock?._panel.actor;
+        };
+        if (launcher) { launcher._taskbarSource = this._panelSource; launcher._taskbarChanged = this._panelChanged; }
+        this.tray = tray;
+        this.openPreferences = openPreferences;
+        this.panelMenus = new TaskbarMenus();
         this.config = readConfig(settings);
         this._docks = [];
+        this._iconColors = new Map();
+        this._colorCancel = new Gio.Cancellable();
+        this._iconTheme = new St.IconTheme();
+        this._themeSignal = this._iconTheme.connect('changed', () => this._resetIconColors());
+        this.status = new DockStatus(() => this._docks.forEach(dock => dock._icons.forEach(icon => icon.updateIndicator())));
 
         this.settings.connectObject('changed', (_s, key) => {
             this.config = readConfig(settings);
-            if (NON_DOCK_KEY.test(key) && key !== 'top-bar-position')
+            if (NON_DOCK_KEY.test(key) && !(this.config.inPanel && (key.startsWith('top-bar-') || key.startsWith('app-button-') || key === 'glass-top-bar')) && key !== 'top-bar-position')
                 return;
             if (key === 'hide-overview-dash')
                 this._syncOverviewDash();
@@ -1212,6 +1576,49 @@ export class DockManager {
         }
     }
 
+    _resetIconColors() {
+        this._colorCancel.cancel();
+        this._colorCancel = new Gio.Cancellable();
+        this._iconColors.clear();
+        for (const dock of this._docks) {
+            dock._icons.forEach(icon => {
+                icon._dominantRequested = false;
+                icon._dominantColor = null;
+                icon.updateIndicator();
+            });
+        }
+    }
+
+    loadIconColor(app, callback) {
+        const key = app.get_icon()?.to_string() ?? app.get_id();
+        const cached = this._iconColors.get(key);
+        if (cached) {
+            if (cached.pending) cached.callbacks.push(callback);
+            else callback(cached.color);
+            return;
+        }
+        const entry = {pending: true, callbacks: [callback], color: null};
+        this._iconColors.set(key, entry);
+        const cancel = this._colorCancel;
+        const finish = color => {
+            if (cancel.is_cancelled()) return;
+            entry.pending = false;
+            entry.color = color;
+            entry.callbacks.splice(0).forEach(cb => cb(color));
+        };
+        try {
+            const info = this._iconTheme.lookup_by_gicon(app.get_icon(), 24, St.IconLookupFlags.FORCE_SIZE);
+            if (!info) { finish(null); return; }
+            info.load_icon_async(cancel, (iconInfo, result) => {
+                try {
+                    const pixbuf = iconInfo.load_icon_finish(result);
+                    finish(dominantColor(pixbuf.get_pixels(), pixbuf.width, pixbuf.height,
+                        pixbuf.rowstride, pixbuf.n_channels));
+                } catch { finish(null); }
+            });
+        } catch { finish(null); }
+    }
+
     _queueRebuild() {
         // Settings sliders fire many changes; rebuild once they settle.
         if (this._rebuildId)
@@ -1224,11 +1631,15 @@ export class DockManager {
     }
 
     _build() {
+        this._shortcuts?.destroy();
+        this.tray?.setTaskbarHosts([]);
         this._destroyDocks();
+        this._syncNativePanel();
         const monitors = Main.layoutManager.monitors;
-        const indices = this.config.multiMonitor && !this.config.inPanel
+        const indices = this.config.multiMonitor
             ? monitors.map((_m, i) => i)
-            : [Main.layoutManager.primaryIndex];
+            : [!this.config.inPanel && monitors[this.config.preferredMonitor]
+                ? this.config.preferredMonitor : Main.layoutManager.primaryIndex];
         for (const i of indices) {
             try {
                 this._docks.push(new Dock(this, i));
@@ -1236,7 +1647,41 @@ export class DockManager {
                 logError(e, `Orbit Dock: failed to create dock on monitor ${i}`);
             }
         }
+        this.tray?.setTaskbarHosts(this._docks.filter(dock => dock.inPanel).map(dock => dock._panel));
+        this._shortcuts = new DockShortcuts(this);
         this._syncOverviewDash();
+    }
+
+    _syncNativePanel() {
+        if (this.config.inPanel && this._nativeVisible === undefined) {
+            this._nativeVisible = Main.panel.visible;
+            Main.panel.hide();
+            this._nativeMethods = [];
+            for (const [method, role] of [['toggleCalendar', 'Calendar'], ['toggleQuickSettings', 'System'], ['closeCalendar', 'Calendar'], ['closeQuickSettings', 'System']]) {
+                const original = Main.panel[method], own = Object.hasOwn(Main.panel, method);
+                const replacement = () => {
+                    if (method.startsWith('close')) {
+                        Main.panel.statusArea[role === 'Calendar' ? 'dateMenu' : 'quickSettings']?.menu.close();
+                        return;
+                    }
+                    const dock = this._docks.find(d => d.monitorIndex === global.display.get_current_monitor()) ?? this._docks[0];
+                    if (dock?._panel) { dock.revealFor(); dock._panel[`open${role}`](); }
+                };
+                this._nativeMethods.push({method, original, own, replacement});
+                Main.panel[method] = replacement;
+            }
+        } else if (!this.config.inPanel) this._restoreNativePanel();
+    }
+
+    _restoreNativePanel() {
+        if (this._nativeVisible === undefined) return;
+        for (const {method, original, own, replacement} of this._nativeMethods) {
+            if (Main.panel[method] !== replacement) continue;
+            if (own) Main.panel[method] = original;
+            else delete Main.panel[method];
+        }
+        Main.panel.visible = this._nativeVisible;
+        this._nativeVisible = undefined;
     }
 
     _syncOverviewDash() {
@@ -1262,10 +1707,20 @@ export class DockManager {
         }
         this.settings.disconnectObject(this);
         Main.layoutManager.disconnectObject(this);
+        this._shortcuts?.destroy();
+        this.tray?.setTaskbarHosts([]);
         this._destroyDocks();
+        this.panelMenus.destroy();
+        this._restoreNativePanel();
+        this.status.destroy();
+        this._colorCancel.cancel();
+        this._iconTheme.disconnect(this._themeSignal);
+        this._iconColors.clear();
         const dash = Main.overview.dash;
         dash.set_height(-1);
         dash.show();
+        if (this.launcher?._taskbarSource === this._panelSource) this.launcher._taskbarSource = this._previousPanelSource;
+        if (this.launcher?._taskbarChanged === this._panelChanged) this.launcher._taskbarChanged = this._previousPanelChanged;
         this.settings = null;
     }
 }

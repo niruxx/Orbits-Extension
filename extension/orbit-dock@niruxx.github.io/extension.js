@@ -4,6 +4,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {AppButtonManager} from './appButton.js';
 import {DockManager} from './dock.js';
+import {DesktopIcons} from './desktopIcons.js';
 import {Launcher} from './launcher.js';
 import {ShellModes} from './shellModes.js';
 import {TopBarManager} from './topbar.js';
@@ -52,10 +53,11 @@ export default class OrbitShellExtension extends Extension {
         this._launcher = new Launcher(settings);
         // Each part is independent: one failing must not take the others down.
         this._parts = [
-            ['dock', () => new DockManager(settings, this._launcher)],
+            ['dock', () => new DockManager(settings, this._launcher, this._tray, () => this.openPreferences())],
             ['top bar', () => new TopBarManager(settings)],
             ['shell modes', () => new ShellModes(settings, this._launcher)],
             ['app button', () => new AppButtonManager(settings)],
+            ['desktop icons', () => new DesktopIcons(settings, () => this.openPreferences())],
         ].map(([name, make]) => attempt(name, make));
     }
 

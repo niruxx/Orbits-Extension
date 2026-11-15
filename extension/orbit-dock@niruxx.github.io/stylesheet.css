@@ -389,3 +389,56 @@
 .orbit-launcher-arc .orbit-launcher-tile-name { max-width: 104px; text-align: center; }
 .orbit-launcher-arc .orbit-launcher-power { padding: 8px 10px 0; }
 .orbit-launcher-arc .orbit-launcher-power-label { padding-right: 0; }
+
+/* Window previews shared by the standalone dock and integrated taskbar. */
+.orbit-preview-card { padding: 6px; spacing: 6px; }
+.orbit-preview-header { spacing: 8px; }
+.orbit-preview-header StLabel { max-width: 220px; }
+.orbit-preview-close { padding: 5px; border-radius: 6px; }
+.orbit-preview-activate { border-radius: 8px; padding: 4px; background-color: rgba(0,0,0,0.2); }
+.orbit-preview-close:hover, .orbit-preview-close:focus { background-color: #b33434; }
+.orbit-preview-activate:hover, .orbit-preview-activate:focus { background-color: rgba(255,255,255,0.16); }
+
+.orbit-show-desktop { padding: 0 8px; border-left: 1px solid rgba(255,255,255,0.16); }
+.orbit-show-desktop:hover, .orbit-show-desktop:focus { background-color: rgba(255,255,255,0.12); }
+
+.orbit-window-button { spacing: 8px; }
+.orbit-window-title { padding-right: 6px; }
+
+.orbit-number-badge, .orbit-count-badge {
+  padding: 1px 4px; border-radius: 8px; font-size: 10px; font-weight: bold; color: white;
+}
+.orbit-number-badge { background-color: #333; }
+.orbit-count-badge { background-color: #c01c28; }
+.orbit-launcher-progress { width: 32px; height: 4px; margin-bottom: 7px; background-color: #555; }
+.orbit-launcher-progress-fill { background-color: #3584e4; }
+.orbit-dock-app.orbit-urgent { box-shadow: inset 0 0 0 2px #e5a50a; }
+.orbit-dock-places { spacing: 2px; }
+.orbit-dock-place { padding: 6px; border-radius: 10px; }
+.orbit-dock-place:hover, .orbit-dock-place:focus { background-color: rgba(255,255,255,0.12); }
+.orbit-window-spread { background-color: rgba(15,15,20,0.92); }
+.orbit-spread-heading { font-size: 24px; font-weight: bold; color: white; padding-bottom: 20px; }
+.orbit-spread-row { spacing: 16px; }
+.orbit-spread-card { spacing: 8px; padding: 8px; color: white; }
+
+/* Native desktop tiles live in the background group, below application windows. */
+.orbit-desktop-icon { border-radius: 8px; padding: 6px; }
+.orbit-desktop-icon:hover { background-color: rgba(255,255,255,0.12); }
+.orbit-desktop-icon:selected, .orbit-desktop-icon:focus { background-color: rgba(53,132,228,0.42); }
+.orbit-desktop-tile { spacing: 6px; }
+.orbit-desktop-label { text-align: center; }
+
+.orbit-taskbar-panel { color: #f6f5f4; padding: 0; spacing: 2px; }
+.orbit-taskbar-panel .orbit-panel-button { padding: 4px 8px; border-radius: 6px; }
+.orbit-taskbar-panel .orbit-panel-button:hover, .orbit-taskbar-panel .orbit-panel-button:focus { background-color: rgba(255,255,255,0.12); }
+.orbit-taskbar-tray { spacing: 2px; }
+.orbit-taskbar-panel .orbit-taskbar-box { spacing: 2px; }
+
+.orbit-taskbar-panel .panel-button { padding: 0 4px; border-radius: 6px; }
+
+.orbit-launcher-app:selected, .orbit-launcher-tile:selected, .orbit-launcher-category:selected,
+.orbit-launcher-app:focus, .orbit-launcher-tile:focus, .orbit-launcher-category:focus {
+  background-color: rgba(53,132,228,0.4);
+  box-shadow: inset 0 0 0 2px rgba(153,193,241,0.9);
+}
+.orbit-launcher-power { transition-duration: 120ms; }

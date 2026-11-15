@@ -351,6 +351,7 @@ export class TrayManager {
     //    freely (position/size changes, lock screen).
     constructor(settings) {
         this._settings = settings;
+        this._taskbarHosts = [];
         this._items = new Map(); // key -> {busName, path, watchId, button}
         this._settings.connectObject('changed', (_s, key) => {
             if (key === 'tray-enabled')
@@ -363,6 +364,16 @@ export class TrayManager {
         // changes.
         Main.sessionMode.connectObject('updated', () => this._rebuildView(), this);
         this._syncEnabled();
+    }
+
+    setTaskbarHosts(hosts) {
+        if (hosts.length === this._taskbarHosts.length && hosts.every((host, i) => host === this._taskbarHosts[i])) return;
+        this._taskbarHosts = hosts;
+        this._rebuildView();
+    }
+    _destroyButtons(entry) {
+        for (const button of entry.buttons ?? (entry.button ? [entry.button] : [])) button.destroy();
+        entry.buttons = []; entry.button = null;
     }
 
     get iconSize() {
@@ -457,7 +468,7 @@ export class TrayManager {
             return;
         this._items.delete(key);
         Gio.bus_unwatch_name(entry.watchId);
-        entry.button?.destroy();
+        this._destroyButtons(entry);
         if (this._area && !this._items.size)
             this._area.hide();
         this._dbus?.emit_signal('StatusNotifierItemUnregistered', new GLib.Variant('(s)', [key]));
@@ -490,9 +501,19 @@ export class TrayManager {
     _showItem(key, entry) {
         if (!this._viewBuilt)
             return;
+        if (this._position === 'top-bar' && this._taskbarHosts.length) {
+            entry.buttons = this._taskbarHosts.map(host => {
+                const button = new TrayItemButton(this, entry.busName, entry.path, host.dock.side);
+                host.addTrayButton(button);
+                return button;
+            });
+            entry.button = entry.buttons[0] ?? null;
+            return;
+        }
         const side = this._position === 'bottom-left' ? St.Side.BOTTOM : St.Side.TOP;
         const button = new TrayItemButton(this, entry.busName, entry.path, side);
         entry.button = button;
+        entry.buttons = [button];
         button.connect('destroy', () => {
             if (entry.button === button)
                 entry.button = null;
@@ -511,7 +532,7 @@ export class TrayManager {
     _destroyView() {
         this._viewBuilt = false;
         for (const entry of this._items.values()) {
-            entry.button?.destroy();
+            this._destroyButtons(entry);
             entry.button = null;
         }
         global.display.disconnectObject(this);

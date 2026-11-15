@@ -23,7 +23,7 @@
 
     <!-- Behaviour -->
     <key name="dock-mode" type="s">
-      <choices><choice value="fixed"/><choice value="autohide"/><choice value="intellihide"/></choices>
+      <choices><choice value="fixed"/><choice value="manual"/><choice value="autohide"/><choice value="intellihide"/></choices>
       <default>'intellihide'</default>
       <summary>fixed reserves screen space; autohide hides until the pointer pushes the edge; intellihide hides only when a window overlaps</summary>
     </key>
@@ -86,7 +86,7 @@
 
     <!-- Actions -->
     <key name="click-action" type="s">
-      <choices><choice value="focus-or-minimize"/><choice value="cycle-windows"/><choice value="focus-or-minimize-all"/><choice value="launch"/></choices>
+      <choices><choice value="focus-or-minimize"/><choice value="cycle-windows"/><choice value="focus-or-minimize-all"/><choice value="previews"/><choice value="focus-or-previews"/><choice value="spread"/><choice value="launch"/></choices>
       <default>'focus-or-minimize'</default>
       <summary>What a left click on a running app does</summary>
     </key>
@@ -103,7 +103,7 @@
 
     <!-- Appearance -->
     <key name="indicator-style" type="s">
-      <choices><choice value="dots"/><choice value="dot"/><choice value="line"/><choice value="none"/></choices>
+      <choices><choice value="dots"/><choice value="dot"/><choice value="line"/><choice value="squares"/><choice value="dashes"/><choice value="segmented"/><choice value="solid"/><choice value="metro"/><choice value="none"/></choices>
       <default>'dots'</default>
       <summary>Running indicator style (dots = one per window, up to 4)</summary>
     </key>
@@ -297,7 +297,7 @@
       <summary>App icon size in the taskbar</summary>
     </key>
     <key name="launcher-style" type="s">
-      <choices><choice value="modern"/><choice value="list"/><choice value="minimal"/><choice value="classic"/><choice value="arc"/><choice value="xp"/></choices>
+      <choices><choice value="modern"/><choice value="list"/><choice value="minimal"/><choice value="classic"/><choice value="arc"/><choice value="xp"/><choice value="grid"/><choice value="runner"/><choice value="sidebar"/></choices>
       <default>'modern'</default>
       <summary>modern = search, pinned grid, All apps; list = one A–Z list; minimal = compact search box; classic = categories beside the list; arc = categories beside an app grid; xp = Windows XP start menu</summary>
     </key>
@@ -310,5 +310,340 @@
       <default>false</default>
       <summary>Windows XP menu: group All Programs into category folders</summary>
     </key>
+
+    <!-- Window previews and additional dock controls -->
+    <key name="window-previews" type="b"><default>true</default><summary>Show window previews on hover</summary></key>
+    <key name="preview-delay" type="i"><range min="0" max="3000"/><default>400</default><summary>Hover delay before previews in milliseconds</summary></key>
+    <key name="preview-size" type="i"><range min="120" max="480"/><default>240</default><summary>Preview width in logical pixels</summary></key>
+    <key name="preview-titles" type="b"><default>true</default><summary>Show window titles above previews</summary></key>
+    <key name="preview-peek" type="b"><default>false</default><summary>Dim other windows while hovering a preview</summary></key>
+    <key name="preferred-monitor" type="i"><range min="-1" max="31"/><default>-1</default><summary>Dock monitor index; -1 follows the primary monitor</summary></key>
+    <key name="favorites-primary-only" type="b"><default>false</default><summary>Show pinned apps only on the primary monitor</summary></key>
+    <key name="shift-click-action" type="s">
+      <choices><choice value="launch"/><choice value="focus-or-minimize"/><choice value="cycle-windows"/><choice value="focus-or-minimize-all"/><choice value="previews"/><choice value="focus-or-previews"/><choice value="spread"/></choices>
+      <default>'launch'</default><summary>Shift-click action</summary>
+    </key>
+    <key name="shift-middle-click-action" type="s">
+      <choices><choice value="new-window"/><choice value="minimize"/><choice value="quit"/><choice value="none"/></choices>
+      <default>'new-window'</default><summary>Shift-middle-click action</summary>
+    </key>
+    <key name="show-desktop-button" type="b"><default>false</default><summary>Show a desktop toggle in the taskbar</summary></key>
+    <key name="show-desktop-peek" type="b"><default>false</default><summary>Peek at the desktop on button hover</summary></key>
+    <key name="group-apps" type="b"><default>true</default><summary>Group taskbar windows by application</summary></key>
+    <key name="window-titles" type="b"><default>true</default><summary>Show titles on ungrouped taskbar buttons</summary></key>
+    <key name="window-title-width" type="i"><range min="40" max="300"/><default>140</default><summary>Ungrouped window label width in logical pixels</summary></key>
+
+    <!-- Dock parity controls -->
+    <key name="number-shortcuts" type="b">
+      <default>false</default><summary>Enable numbered app shortcuts</summary>
+    </key>
+    <key name="number-overlays" type="s">
+<choices><choice value="never"/><choice value="temporary"/><choice value="always"/></choices>
+      <default>'temporary'</default><summary>Show shortcut numbers</summary>
+    </key>
+    <key name="notification-badges" type="b">
+      <default>true</default><summary>Show notification and launcher counts</summary>
+    </key>
+    <key name="launcher-progress" type="b">
+      <default>true</default><summary>Show application-reported launcher progress</summary>
+    </key>
+    <key name="urgent-indicator" type="b">
+      <default>true</default><summary>Highlight applications requesting attention</summary>
+    </key>
+    <key name="reveal-urgent" type="b">
+      <default>true</default><summary>Reveal the standalone dock for urgent applications</summary>
+    </key>
+    <key name="show-trash" type="b">
+      <default>false</default><summary>Show Trash in the dock</summary>
+    </key>
+    <key name="show-mounts" type="b">
+      <default>false</default><summary>Show volumes in the dock</summary>
+    </key>
+    <key name="mounts-only-mounted" type="b">
+      <default>true</default><summary>Show mounted volumes only</summary>
+    </key>
+    <key name="mounts-local" type="b">
+      <default>true</default><summary>Include local volumes</summary>
+    </key>
+    <key name="mounts-network" type="b">
+      <default>true</default><summary>Include network mounts</summary>
+    </key>
+    <key name="dock-opacity-mode" type="s">
+<choices><choice value="fixed"/><choice value="dynamic"/></choices>
+      <default>'fixed'</default><summary>Dock opacity mode</summary>
+    </key>
+    <key name="dock-min-opacity" type="d">
+<range min="0" max="1"/>
+      <default>0.25</default><summary>Dock opacity without nearby windows</summary>
+    </key>
+    <key name="indicator-size" type="i">
+<range min="2" max="12"/>
+      <default>5</default><summary>Indicator thickness in logical pixels</summary>
+    </key>
+    <key name="indicator-color" type="s">
+      <default>'#deddda'</default><summary>Unfocused indicator color</summary>
+    </key>
+    <key name="indicator-focused-color" type="s">
+      <default>'#3584e4'</default><summary>Focused indicator color</summary>
+    </key>
+    <key name="indicator-dominant-color" type="b">
+      <default>false</default><summary>Use application icon colors for running indicators</summary>
+    </key>
+    <key name="fixed-icon-size" type="b">
+      <default>false</default><summary>Keep configured icon size and scroll overflow</summary>
+    </key>
+    <key name="dock-length-limit" type="d">
+<range min="0.2" max="1"/>
+      <default>1.0</default><summary>Maximum fraction of screen edge used by the dock</summary>
+    </key>
+    <key name="show-delay" type="i">
+<range min="0" max="3000"/>
+      <default>150</default><summary>Delay before revealing at the screen edge in milliseconds</summary>
+    </key>
+    <key name="fullscreen-reveal" type="b">
+      <default>true</default><summary>Allow edge and keyboard reveal over fullscreen windows</summary>
+    </key>
+    <key name="reveal-shortcut" type="as">
+      <default>['&lt;Super&gt;&lt;Alt&gt;d']</default><summary>Reveal dock or toggle manual visibility</summary>
+    </key>
+    <key name="dock-app-1" type="as">
+      <default>['&lt;Super&gt;&lt;Alt&gt;1']</default><summary>Activate dock application 1</summary>
+    </key>
+    <key name="dock-app-2" type="as">
+      <default>['&lt;Super&gt;&lt;Alt&gt;2']</default><summary>Activate dock application 2</summary>
+    </key>
+    <key name="dock-app-3" type="as">
+      <default>['&lt;Super&gt;&lt;Alt&gt;3']</default><summary>Activate dock application 3</summary>
+    </key>
+    <key name="dock-app-4" type="as">
+      <default>['&lt;Super&gt;&lt;Alt&gt;4']</default><summary>Activate dock application 4</summary>
+    </key>
+    <key name="dock-app-5" type="as">
+      <default>['&lt;Super&gt;&lt;Alt&gt;5']</default><summary>Activate dock application 5</summary>
+    </key>
+    <key name="dock-app-6" type="as">
+      <default>['&lt;Super&gt;&lt;Alt&gt;6']</default><summary>Activate dock application 6</summary>
+    </key>
+    <key name="dock-app-7" type="as">
+      <default>['&lt;Super&gt;&lt;Alt&gt;7']</default><summary>Activate dock application 7</summary>
+    </key>
+    <key name="dock-app-8" type="as">
+      <default>['&lt;Super&gt;&lt;Alt&gt;8']</default><summary>Activate dock application 8</summary>
+    </key>
+    <key name="dock-app-9" type="as">
+      <default>['&lt;Super&gt;&lt;Alt&gt;9']</default><summary>Activate dock application 9</summary>
+    </key>
+    <key name="dock-app-10" type="as">
+      <default>['&lt;Super&gt;&lt;Alt&gt;0']</default><summary>Activate dock application 10</summary>
+    </key>
+
+    <!-- Native desktop icons -->
+    <key name="desktop-icons-enabled" type="b">
+      <default>false</default><summary>Show native desktop icons</summary>
+    </key>
+    <key name="desktop-show-files" type="b">
+      <default>true</default><summary>Show files from the Desktop folder</summary>
+    </key>
+    <key name="desktop-show-hidden" type="b">
+      <default>false</default><summary>Include hidden files on the desktop</summary>
+    </key>
+    <key name="desktop-show-home" type="b">
+      <default>true</default><summary>Show Home on the desktop</summary>
+    </key>
+    <key name="desktop-show-trash" type="b">
+      <default>true</default><summary>Show Trash on the desktop</summary>
+    </key>
+    <key name="desktop-show-drives" type="b">
+      <default>false</default><summary>Show mounted drives and network locations</summary>
+    </key>
+    <key name="desktop-primary-only" type="b">
+      <default>true</default><summary>Use the primary monitor only</summary>
+    </key>
+    <key name="desktop-icon-size" type="i">
+<range min="24" max="128"/>
+      <default>48</default><summary>Desktop icon size in logical pixels</summary>
+    </key>
+    <key name="desktop-label-size" type="i">
+<range min="8" max="24"/>
+      <default>11</default><summary>Desktop label font size</summary>
+    </key>
+    <key name="desktop-label-color" type="s">
+      <default>'#ffffff'</default><summary>Desktop label color</summary>
+    </key>
+    <key name="desktop-label-shadow" type="b">
+      <default>true</default><summary>Draw a shadow behind desktop labels</summary>
+    </key>
+    <key name="desktop-grid-spacing" type="i">
+<range min="0" max="64"/>
+      <default>12</default><summary>Extra space between desktop icons</summary>
+    </key>
+    <key name="desktop-sort-order" type="s">
+<choices><choice value="manual"/><choice value="name"/><choice value="name-desc"/><choice value="modified"/><choice value="modified-desc"/><choice value="size"/><choice value="size-desc"/><choice value="type"/></choices>
+      <default>'name'</default><summary>Desktop icon sort order</summary>
+    </key>
+    <key name="desktop-folders-first" type="b">
+      <default>true</default><summary>Keep folders ahead of regular files</summary>
+    </key>
+    <key name="desktop-start-corner" type="s">
+<choices><choice value="top-left"/><choice value="top-right"/><choice value="bottom-left"/><choice value="bottom-right"/></choices>
+      <default>'top-left'</default><summary>First corner for desktop icons</summary>
+    </key>
+    <key name="desktop-flow" type="s">
+<choices><choice value="vertical"/><choice value="horizontal"/></choices>
+      <default>'vertical'</default><summary>Fill desktop columns or rows</summary>
+    </key>
+    <key name="desktop-single-click" type="b">
+      <default>false</default><summary>Open desktop icons with a single click</summary>
+    </key>
+    <key name="desktop-home-icon" type="s">
+      <default>'user-home'</default><summary>Home icon theme name or image path</summary>
+    </key>
+    <key name="desktop-trash-icon" type="s">
+      <default>'user-trash'</default><summary>Trash icon theme name or image path</summary>
+    </key>
+    <key name="desktop-icon-positions" type="s">
+      <default>'{}'</default><summary>Saved manual desktop positions</summary>
+    </key>
+
+    <!-- Independent taskbars -->
+    <key name="taskbar-position" type="s">
+<choices><choice value="follow"/><choice value="bottom"/><choice value="top"/><choice value="left"/><choice value="right"/></choices>
+      <default>'follow'</default><summary>Taskbar screen edge</summary>
+    </key>
+    <key name="taskbar-size" type="i">
+<range min="0" max="128"/>
+      <default>0</default><summary>Panel thickness; zero follows the Top Bar height</summary>
+    </key>
+    <key name="taskbar-length" type="d">
+<range min="0.2" max="1"/>
+      <default>1.0</default><summary>Taskbar length as a fraction of the monitor</summary>
+    </key>
+    <key name="taskbar-anchor" type="s">
+<choices><choice value="start"/><choice value="center"/><choice value="end"/></choices>
+      <default>'start'</default><summary>Panel alignment along its edge</summary>
+    </key>
+    <key name="taskbar-mode" type="s">
+<choices><choice value="fixed"/><choice value="autohide"/><choice value="intellihide"/></choices>
+      <default>'fixed'</default><summary>Whole-panel visibility</summary>
+    </key>
+    <key name="taskbar-monitor-overrides" type="s">
+      <default>'{}'</default><summary>Per-monitor panel configuration</summary>
+    </key>
+    <key name="taskbar-element-order" type="as">
+      <default>['start', 'activities', 'apps', 'app-title', 'places', 'spacer', 'spacer2', 'tray', 'clock', 'system', 'desktop']</default><summary>Panel element order</summary>
+    </key>
+    <key name="taskbar-hidden-elements" type="as">
+      <default>['activities', 'app-title', 'spacer2']</default><summary>Hidden panel elements</summary>
+    </key>
+    <key name="taskbar-scroll-action" type="s">
+<choices><choice value="none"/><choice value="switch-workspace"/><choice value="cycle-windows"/><choice value="volume"/></choices>
+      <default>'switch-workspace'</default><summary>Scroll over unused panel space</summary>
+    </key>
+    <key name="taskbar-click-action" type="s">
+<choices><choice value="none"/><choice value="overview"/><choice value="desktop"/></choices>
+      <default>'none'</default><summary>Click unused panel space</summary>
+    </key>
+    <key name="taskbar-middle-click-action" type="s">
+<choices><choice value="none"/><choice value="overview"/><choice value="desktop"/></choices>
+      <default>'none'</default><summary>Middle-click unused panel space</summary>
+    </key>
+    <key name="taskbar-double-click-action" type="s">
+<choices><choice value="none"/><choice value="overview"/><choice value="desktop"/><choice value="maximize"/></choices>
+      <default>'maximize'</default><summary>Double-click unused panel space</summary>
+    </key>
+    <key name="taskbar-drag-window" type="b">
+      <default>true</default><summary>Drag the focused window from unused panel space</summary>
+    </key>
+    <key name="hover-animation" type="s">
+<choices><choice value="none"/><choice value="zoom"/><choice value="lift"/></choices>
+      <default>'none'</default><summary>App icon hover animation</summary>
+    </key>
+    <key name="hover-animation-strength" type="d">
+<range min="0.05" max="0.4"/>
+      <default>0.15</default><summary>Hover animation strength</summary>
+    </key>
+    <key name="indicator-focused-style" type="s">
+<choices><choice value="same"/><choice value="dots"/><choice value="dot"/><choice value="line"/><choice value="squares"/><choice value="dashes"/><choice value="segmented"/><choice value="solid"/><choice value="metro"/><choice value="none"/></choices>
+      <default>'same'</default><summary>Focused application indicator style</summary>
+    </key>
+    <key name="preview-hide-delay" type="i">
+<range min="0" max="3000"/>
+      <default>250</default><summary>Delay before closing window previews</summary>
+    </key>
+    <key name="preview-ratio" type="d">
+<range min="0.3" max="1"/>
+      <default>0.56</default><summary>Window preview height/width ratio</summary>
+    </key>
+    <key name="preview-background" type="s">
+      <default>'#242428'</default><summary>Preview panel color</summary>
+    </key>
+    <key name="preview-opacity" type="d">
+<range min="0.1" max="1"/>
+      <default>0.96</default><summary>Preview panel opacity</summary>
+    </key>
+    <key name="preview-radius" type="i">
+<range min="0" max="32"/>
+      <default>10</default><summary>Preview card radius</summary>
+    </key>
+    <key name="preview-title-size" type="i">
+<range min="8" max="24"/>
+      <default>12</default><summary>Preview title size</summary>
+    </key>
+
+    <!-- Launcher navigation and customization -->
+    <key name="launcher-width" type="i"><range min="0" max="1400"/><default>0</default><summary>Menu width; zero uses the layout default</summary></key>
+    <key name="launcher-height" type="i"><range min="0" max="1400"/><default>0</default><summary>Menu height; zero uses the layout default</summary></key>
+    <key name="launcher-columns" type="i"><range min="2" max="8"/><default>4</default><summary>Arc grid columns</summary></key>
+    <key name="launcher-grid-icon-size" type="i"><range min="24" max="96"/><default>48</default><summary>Grid icon size</summary></key>
+    <key name="launcher-hover-delay" type="i"><range min="0" max="1000"/><default>160</default><summary>Category hover delay in milliseconds</summary></key>
+    <key name="launcher-transition-time" type="i"><range min="0" max="400"/><default>120</default><summary>Selection transition time in milliseconds</summary></key>
+    <key name="launcher-background-color" type="s"><default>'#1e1e22'</default><summary>Menu background color</summary></key>
+    <key name="launcher-font-size" type="i"><range min="10" max="24"/><default>14</default><summary>Menu font size</summary></key>
+    <key name="launcher-footer-opacity" type="d"><range min="0" max="1"/><default>0.25</default><summary>Menu bottom strip opacity</summary></key>
+    <key name="launcher-arc-bottom-bar" type="b"><default>true</default><summary>Enable a bottom taskbar when selecting Arc Menu</summary></key>
+    <key name="launcher-independent-pins" type="b"><default>false</default><summary>Use launcher pins independently of dock favorites</summary></key>
+    <key name="launcher-pins-initialized" type="b"><default>false</default><summary>Independent pins initialized</summary></key>
+    <key name="launcher-pinned-apps" type="as"><default>[]</default><summary>Launcher application pins in display order</summary></key>
+    <key name="launcher-default-view" type="s"><choices><choice value="favorites"/><choice value="all"/><choice value="frequent"/><choice value="new"/><choice value="recent"/><choice value="shortcuts"/></choices><default>'favorites'</default><summary>Initial menu view</summary></key>
+    <key name="launcher-hidden-categories" type="as"><default>[]</default><summary>Hidden launcher categories</summary></key>
+    <key name="launcher-shortcut" type="as"><default>['&lt;Super&gt;&lt;Alt&gt;space']</default><summary>Custom launcher shortcut</summary></key>
+    <key name="launcher-search-providers" type="b"><default>true</default><summary>Launcher search providers</summary></key>
+    <key name="launcher-disabled-providers" type="as"><default>[]</default><summary>Launcher disabled providers</summary></key>
+    <key name="launcher-provider-limit" type="i"><range min="1" max="20"/><default>5</default><summary>Launcher provider limit</summary></key>
+    <key name="launcher-provider-descriptions" type="b"><default>true</default><summary>Launcher provider descriptions</summary></key>
+    <key name="launcher-recent-files" type="b"><default>false</default><summary>Launcher recent files</summary></key>
+    <key name="launcher-recent-days" type="i"><range min="1" max="365"/><default>30</default><summary>Launcher recent days</summary></key>
+    <key name="launcher-recent-limit" type="i"><range min="1" max="100"/><default>20</default><summary>Launcher recent limit</summary></key>
+    <key name="launcher-shortcuts" type="s"><default>'[]'</default><summary>Launcher shortcuts</summary></key>
+    <key name="launcher-places" type="as"><default>['home', 'documents', 'downloads', 'settings']</default><summary>Launcher places</summary></key>
+    <key name="launcher-show-places" type="b"><default>true</default><summary>Launcher show places</summary></key>
+    <key name="launcher-placement" type="s"><choices><choice value="automatic"/><choice value="center"/><choice value="top-left"/><choice value="top-center"/><choice value="top-right"/><choice value="bottom-left"/><choice value="bottom-center"/><choice value="bottom-right"/></choices><default>'automatic'</default><summary>Launcher placement</summary></key>
+    <key name="launcher-category-order" type="as"><default>[]</default><summary>Launcher category order</summary></key>
+    <key name="launcher-category-names" type="s"><default>'{}'</default><summary>Launcher category names</summary></key>
+    <key name="launcher-show-empty-categories" type="b"><default>false</default><summary>Launcher show empty categories</summary></key>
+    <key name="launcher-new-days" type="i"><range min="1" max="90"/><default>14</default><summary>Launcher new days</summary></key>
+    <key name="launcher-install-history" type="s"><default>'{}'</default><summary>Launcher install history</summary></key>
+    <key name="launcher-button-icon" type="s"><default>'view-app-grid-symbolic'</default><summary>Launcher button icon</summary></key>
+    <key name="launcher-button-label" type="s"><default>'Applications'</default><summary>Launcher button label</summary></key>
+    <key name="launcher-button-show-label" type="b"><default>false</default><summary>Launcher button show label</summary></key>
+    <key name="launcher-button-icon-size" type="i"><range min="0" max="96"/><default>0</default><summary>Launcher button icon size</summary></key>
+    <key name="launcher-button-color" type="s"><default>'#ffffff'</default><summary>Launcher button color</summary></key>
+    <key name="launcher-button-custom-color" type="b"><default>false</default><summary>Launcher button custom color</summary></key>
+    <key name="launcher-modern-columns" type="i"><range min="1" max="12"/><default>6</default><summary>Launcher modern columns</summary></key>
+    <key name="launcher-minimal-columns" type="i"><range min="1" max="12"/><default>8</default><summary>Launcher minimal columns</summary></key>
+    <key name="launcher-text-color" type="s"><default>'#f6f5f4'</default><summary>Launcher text color</summary></key>
+    <key name="launcher-selection-color" type="s"><default>'#3584e4'</default><summary>Launcher selection color</summary></key>
+    <key name="launcher-border-color" type="s"><default>'#77767b'</default><summary>Launcher border color</summary></key>
+    <key name="launcher-border-width" type="i"><range min="0" max="8"/><default>1</default><summary>Launcher border width</summary></key>
+    <key name="launcher-radius" type="i"><range min="0" max="48"/><default>14</default><summary>Launcher radius</summary></key>
+    <key name="launcher-spacing" type="i"><range min="0" max="24"/><default>8</default><summary>Launcher spacing</summary></key>
+    <key name="launcher-item-padding" type="i"><range min="0" max="20"/><default>6</default><summary>Launcher item padding</summary></key>
+    <key name="launcher-saved-themes" type="s"><default>'{}'</default><summary>Launcher saved themes</summary></key>
+    <key name="taskbar-app-names" type="b"><default>false</default><summary>Show application names beside running taskbar icons</summary></key>
+    <key name="taskbar-app-name-width" type="i"><range min="40" max="300"/><default>120</default><summary>Taskbar application name width in logical pixels</summary></key>
+    <key name="taskbar-section-spacing" type="i"><range min="0" max="32"/><default>6</default><summary>Spacing between taskbar sections in logical pixels</summary></key>
+    <key name="taskbar-system-icon-spacing" type="i"><range min="0" max="24"/><default>6</default><summary>Spacing between system status icons in logical pixels</summary></key>
+    <key name="taskbar-tray-icon-spacing" type="i"><range min="0" max="24"/><default>6</default><summary>Spacing between application tray icons in logical pixels</summary></key>
+    <key name="taskbar-status-padding" type="i"><range min="0" max="24"/><default>8</default><summary>Clock and system button padding along the taskbar</summary></key>
   </schema>
 </schemalist>

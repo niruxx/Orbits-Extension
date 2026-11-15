@@ -20,7 +20,7 @@ export const APP_BUTTON_KEYS = new Set([
 const ROLE = 'orbit-app-button';
 const MAX_TITLE_CHARS = 48;
 
-const FocusedAppButton = GObject.registerClass(
+export const FocusedAppButton = GObject.registerClass(
 class OrbitFocusedAppButton extends PanelMenu.Button {
     _init(settings) {
         super._init(0.0, 'Focused application', false);

@@ -137,22 +137,25 @@ function applyPreset(window, settings, preset) {
         wm: Object.keys(preset.wm).map(k => [k, wm.get_value(k)]),
     };
 
-    settings.delay();
+    const transaction = new Gio.Settings({settings_schema: settings.settings_schema, backend: settings.backend, path: settings.path});
+    transaction.delay();
     for (const key of keys) {
+        if ((key.startsWith('desktop-') || key.startsWith('launcher-')) && !(key in preset.orbit))
+            continue;
         if (key in preset.orbit)
-            settings.set_value(key, variantFor(settings, key, preset.orbit[key]));
+            transaction.set_value(key, variantFor(settings, key, preset.orbit[key]));
         else
-            settings.reset(key);
+            transaction.reset(key);
     }
-    settings.apply();
+    transaction.apply();
     for (const [key, value] of Object.entries(preset.wm))
         wm.set_value(key, variantFor(wm, key, value));
 
     toast(window, `Applied the ${preset.title} layout`, 'Undo', () => {
-        settings.delay();
+        transaction.delay();
         for (const [key, value] of snapshot.orbit)
-            settings.set_value(key, value);
-        settings.apply();
+            transaction.set_value(key, value);
+        transaction.apply();
         for (const [key, value] of snapshot.wm)
             wm.set_value(key, value);
         toast(window, 'Previous layout restored');
