@@ -31,6 +31,11 @@ Open **Extensions → Orbit Shell → Settings**, or run:
 gnome-extensions prefs orbit-dock@niruxx.github.io
 ```
 
+Use **Top Bar → Window Buttons** to add Minimize, Maximize / Restore and Close to
+GNOME’s panel and place the group on the left, center or right. Use **Shell**
+to customize notification banners, on-screen displays, workspace switching,
+Alt+Tab, Quick Settings and maximized X11 window decorations.
+
 ## Documentation
 
 Start with the [documentation index](docs/README.md), or open a topic:

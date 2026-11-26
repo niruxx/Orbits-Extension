@@ -271,6 +271,14 @@ export function topBarPage(window, settings) {
         W.switchRow(interfaceSettings, 'enable-hot-corners', 'Hot corner',
             'Push the pointer into the top-left corner to open the overview'),
     ]));
+    const windowButtons = W.group('Window Buttons', [
+        r.switch('top-bar-window-minimize', 'Minimize'),
+        r.switch('top-bar-window-maximize', 'Maximize / Restore'),
+        r.switch('top-bar-window-close', 'Close'),
+        r.switch('top-bar-window-buttons-maximized-only', 'Only for maximized windows'),
+        r.combo('top-bar-window-buttons-position', 'Button position'),
+    ], 'Control the focused window from GNOME’s panel. Available when the integrated Orbit taskbar is off.');
+    page.add(windowButtons);
     return addReset(window, page, behaviour, r, 'Top bar');
 }
 
@@ -370,6 +378,35 @@ export function personalizationPage(window, settings) {
         W.comboRow(wm, 'button-layout', 'Title bar buttons', '', layouts),
     ]));
     return addReset(window, page, tray, r, 'Personalization');
+}
+
+export function shellPage(window, settings) {
+    const r = new Rows(settings);
+    const page = makePage('Shell', 'preferences-system-symbolic');
+    const notifications = new Gio.Settings({schema_id: 'org.gnome.desktop.notifications'});
+    const popups = W.group('Notifications &amp; On-Screen Displays', [
+        W.switchRow(notifications, 'show-banners', 'Show notification banners',
+            'Changes GNOME’s system-wide Do Not Disturb setting'),
+        r.combo('shell-banner-position', 'Banner position'),
+        r.combo('shell-osd-position', 'On-screen display position', 'Applies to volume, brightness and other GNOME on-screen displays'),
+    ]);
+    page.add(popups);
+    page.add(W.group('Workspaces and Window Switching', [
+        r.switch('shell-workspace-wraparound', 'Wrap directional workspace switching',
+            'Move between the first and last workspace with a directional shortcut'),
+        r.switch('shell-hide-maximized-decorations', 'Hide maximized X11 window decorations',
+            'Requires xprop. Applies to window-manager decorations on X11 and XWayland.'),
+        r.switch('shell-hide-workspace-popup', 'Hide the workspace switcher popup'),
+        r.spin('shell-switcher-delay', 'Switcher delay', -1, 1000, 1, 'Milliseconds. −1 uses the Shell default and 0 shows immediately'),
+        r.spin('shell-switcher-preview-size', 'Window preview size', 50, 150, 5,
+            'Percentage of the default size, bounded by available space'),
+    ]));
+    page.add(W.group('Quick Settings', [
+        r.switch('shell-hide-dark-style', 'Hide Dark Style'),
+        r.switch('shell-hide-night-light', 'Hide Night Light'),
+        r.switch('shell-hide-airplane-mode', 'Hide Airplane Mode'),
+    ]));
+    return addReset(window, page, popups, r, 'Shell');
 }
 
 export function effectsPage(window, settings) {

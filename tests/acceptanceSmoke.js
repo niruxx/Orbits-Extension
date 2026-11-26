@@ -4,6 +4,8 @@ import GLib from 'gi://GLib';
 import Clutter from 'gi://Clutter';
 import St from 'gi://St';
 import GObject from 'gi://GObject';
+import Shell from 'gi://Shell';
+import System from 'system';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 export default class AcceptanceSmoke extends Extension {
@@ -21,8 +23,56 @@ export default class AcceptanceSmoke extends Extension {
     }
     _display(method, params=null){return new Promise((resolve,reject)=>Gio.DBus.session.call('org.gnome.Mutter.DisplayConfig','/org/gnome/Mutter/DisplayConfig','org.gnome.Mutter.DisplayConfig',method,params,null,Gio.DBusCallFlags.NONE,3000,null,(c,r)=>{try{resolve(c.call_finish(r).recursiveUnpack());}catch(e){reject(e);}}));}
     async _applyDisplays(configs){const state=await this._display('GetCurrentState');await this._display('ApplyMonitorsConfig',new GLib.Variant('(uua(iiduba(ssa{sv}))a{sv})',[state[0],1,configs,{'layout-mode':new GLib.Variant('u',1)}]));await this._wait(700);}
+    async _captureRtl(style, monitor) {
+        const directory = GLib.getenv('ORBIT_RTL_SCREENSHOTS');
+        if (!directory)
+            return;
+
+        const file = Gio.File.new_for_path(GLib.build_filenamev([directory, `${style}.png`]));
+        const stream = file.replace(null, false, Gio.FileCreateFlags.NONE, null);
+        try {
+            const screenshot = new Shell.Screenshot();
+            await new Promise((resolve, reject) => {
+                screenshot.screenshot_area(monitor.x, monitor.y, monitor.width, monitor.height,
+                    stream, (source, result) => {
+                        try {
+                            const [success] = source.screenshot_area_finish(result);
+                            this._assert(success, `Unable to capture RTL layout ${style}`);
+                            resolve();
+                        } catch (error) {
+                            reject(error);
+                        }
+                    });
+            });
+        } finally {
+            stream.close(null);
+        }
+    }
+
+    _sampleHeap(cycle) {
+        const scratch = `${GLib.getenv('ORBIT_SMOKE_RESULT')}.heap`;
+        System.gc();
+        const [, memory] = GLib.file_get_contents('/proc/self/smaps_rollup');
+        const pss = /^Pss:\s+(\d+) kB/m.exec(new TextDecoder().decode(memory));
+        this._assert(pss, 'Cannot read proportional set size for the private Shell');
+        try {
+            System.dumpHeap(scratch);
+            const [, bytes] = GLib.file_get_contents(scratch);
+            const [, heap] = new TextDecoder().decode(bytes).split(/^={10}$/m);
+            this._assert(heap, 'Unrecognized GJS heap dump');
+            const nodes = [...heap.matchAll(/^0x[0-9a-f]+ [A-Z] /gm)].length;
+            this._assert(nodes > 0, 'No nodes in the GJS heap dump');
+            return `Cycle ${cycle}: ${nodes} JS heap nodes, ${pss[1]} KiB PSS`;
+        } finally {
+            GLib.unlink(scratch);
+        }
+    }
+
     async _run(){
         Main.welcomeDialog?.close();
+        const shellRtl = Clutter.get_default_text_direction() === Clutter.TextDirection.RTL;
+        if (GLib.getenv('ORBIT_EXPECT_SHELL_RTL') === '1')
+            this._assert(shellRtl, 'Expected the entire Shell to start in RTL mode');
         const ext=this._ext=Main.extensionManager.lookup('orbit-dock@niruxx.github.io').stateObj;
         const settings=ext._settings; settings.set_boolean('launcher-arc-bottom-bar',false);settings.set_string('launcher-style','arc');settings.set_boolean('launcher-show-power',true);settings.set_boolean('glass-launcher',false);settings.set_string('launcher-default-view','all');settings.set_boolean('dock-in-panel',true);settings.set_boolean('tray-enabled',true);await this._wait(300);
         const seat=global.stage.get_context().get_backend().get_default_seat();
@@ -35,7 +85,8 @@ export default class AcceptanceSmoke extends Extension {
         this._probe.grab_key_focus();let launcher=ext._launcher;launcher.open();await this._wait();
         this._assert(launcher._firstItem(),`No app results: ${launcher._apps.length}`);
         await this._key(Clutter.KEY_Down);const first=launcher._activeItem;this._assert(first?._orbitApp,`Virtual keyboard Down did not select an application: focus=${first}, selected=${launcher._activeItem}, mode=${launcher._inputMode}`);
-        await this._key(Clutter.KEY_Right);this._assert(launcher._activeItem!==first,'Virtual keyboard Right did not move selection');
+        await this._key(shellRtl ? Clutter.KEY_Left : Clutter.KEY_Right);
+        this._assert(launcher._activeItem !== first, 'Virtual horizontal navigation did not move selection');
         await this._key(Clutter.KEY_Escape);this._assert(!launcher.isOpen,'Virtual Escape did not close launcher');
         this._assert(global.stage.get_key_focus()===this._probe,'Launcher did not restore previous keyboard focus');
         launcher.open();launcher._selectCategory('favorites');await this._wait();const all=launcher._catButtons.get('all');const [cx,cy]=all.get_transformed_position();await this._tap(cx+all.width/2,cy+all.height/2);this._assert(launcher._currentCategory==='all','Virtual touch did not select category');
@@ -51,6 +102,7 @@ export default class AcceptanceSmoke extends Extension {
                 const rtl=actor=>{actor.set_text_direction(direction);actor.get_children().forEach(rtl);};rtl(launcher._root);await this._wait(120);
                 this._assert(launcher._menu.width<=monitor.width&&launcher._content.width<=launcher._menu.width+1,`RTL long-text overflow in ${style}`);
                 for(const button of launcher._navigationButtons())if(button._orbitApp||button._orbitResult)this._assert(!!button.accessible_name||!!button._orbitApp.get_name(),`Missing accessible application name in ${style}`);
+                await this._captureRtl(style, monitor);
                 launcher.close();
             }
         }finally{launcher.close();}
@@ -95,8 +147,11 @@ export default class AcceptanceSmoke extends Extension {
         const owned=name=>/^(launcher-shortcut|reveal-shortcut|dock-app-\d+)$/.test(name);
         Main.wm.addKeybinding=function(name,...args){if(owned(name)){if(tracked.has(name))throw new Error(`Duplicate Orbit keybinding: ${name}`);tracked.add(name);}return add.call(this,name,...args);};
         Main.wm.removeKeybinding=function(name,...args){if(owned(name))tracked.delete(name);return remove.call(this,name,...args);};
+        const stress = GLib.getenv('ORBIT_ACCEPTANCE_STRESS') === '1';
+        const cycles = stress ? 180 : 15;
+        const profile = [];
         try {
-            for(let i=0;i<15;i++){
+            for(let i=0;i<cycles;i++){
                 const manager=ext._parts[0],docks=[...manager._docks],oldLauncher=ext._launcher;
                 docks.forEach(dock=>dock.revealFor(5000));
                 oldLauncher.open();await this._wait(40);
@@ -114,10 +169,13 @@ export default class AcceptanceSmoke extends Extension {
                 this._assert(groups()===baselineGroups,'Re-enable leaked taskbar keyboard groups');
                 this._assert(tracked.has('launcher-shortcut')&&tracked.has('reveal-shortcut'),'Re-enable did not restore shortcuts');
                 const counts=this._counts();for(const [name,count]of Object.entries(counts))this._assert(count<=(baseline[name]??0),`Actor count grew for ${name}`);
+                if (stress && (i + 1) % 30 === 0)
+                    profile.push(this._sampleHeap(i + 1));
             }
         } finally { Main.wm.addKeybinding=add;Main.wm.removeKeybinding=remove; }
         this._probe.destroy();this._probe=null;this._fixture.force_exit();this._fixture=null;
-        this._write('PASS: Virtual keyboard/touch, focus restore, RTL long text, mixed scaling/rotation and virtual output removal/restoration, fullscreen/overview, session-mode round trip and fifteen lifecycle/settings cycles with timer/signal/keybinding cleanup');
+        const result = `PASS: Virtual keyboard/touch, focus restore, RTL long text, mixed scaling/rotation and virtual output removal/restoration, fullscreen/overview, session-mode round trip and ${cycles} lifecycle/settings cycles with timer/signal/keybinding cleanup`;
+        this._write([result, ...profile].join('\n'));
     }
     disable(){this._indicator?.unexport();this._fixture?.force_exit();this._probe?.destroy();this._timers?.forEach(id=>GLib.source_remove(id));this._timers?.clear();this._keyboard=null;this._touch=null;}
 }

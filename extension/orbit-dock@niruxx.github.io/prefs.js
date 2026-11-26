@@ -7,7 +7,7 @@ import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/ex
 import {taskbarPage} from './taskbarPrefs.js';
 
 import {layoutsPage} from './prefsLayouts.js';
-import {desktopPage, dockPage, effectsPage, launcherPage, personalizationPage, topBarPage} from './prefsPages.js';
+import {desktopPage, dockPage, effectsPage, launcherPage, personalizationPage, shellPage, topBarPage} from './prefsPages.js';
 
 export default class OrbitShellPrefs extends ExtensionPreferences {
     fillPreferencesWindow(window) {
@@ -15,7 +15,7 @@ export default class OrbitShellPrefs extends ExtensionPreferences {
         window.set_default_size(760, 820);
         window.set_search_enabled(true);
         for (const build of [layoutsPage, dockPage, taskbarPage, topBarPage, launcherPage, desktopPage,
-            personalizationPage, effectsPage])
+            personalizationPage, effectsPage, shellPage])
             window.add(build(window, settings));
         // Keep the settings object alive as long as the window.
         window._orbitSettings = settings;

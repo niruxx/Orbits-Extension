@@ -4,7 +4,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
 import {layoutsPage} from '../extension/orbit-dock@niruxx.github.io/prefsLayouts.js';
-import {desktopPage, dockPage, topBarPage, launcherPage, personalizationPage, effectsPage} from '../extension/orbit-dock@niruxx.github.io/prefsPages.js';
+import {desktopPage, dockPage, topBarPage, launcherPage, personalizationPage, effectsPage, shellPage} from '../extension/orbit-dock@niruxx.github.io/prefsPages.js';
 import {taskbarPage} from '../extension/orbit-dock@niruxx.github.io/taskbarPrefs.js';
 GLib.setenv('GSETTINGS_BACKEND', 'memory', true);
 Gtk.init(); Adw.init();
@@ -18,7 +18,7 @@ if (status !== 0) throw new Error(new TextDecoder().decode(stderr));
 const source = Gio.SettingsSchemaSource.new_from_directory(scratch, Gio.SettingsSchemaSource.get_default(), false);
 const settings = new Gio.Settings({settings_schema: source.lookup(name, false)});
 const window = new Adw.PreferencesWindow();
-for (const build of [layoutsPage, dockPage, taskbarPage, topBarPage, launcherPage, desktopPage, personalizationPage, effectsPage])
+for (const build of [layoutsPage, dockPage, taskbarPage, topBarPage, launcherPage, desktopPage, personalizationPage, effectsPage, shellPage])
     window.add(build(window, settings));
 const descendants = root => {
     const result = [root];
@@ -27,6 +27,11 @@ const descendants = root => {
 };
 const widgets = descendants(window);
 const title = text => widgets.find(widget => widget instanceof Adw.PreferencesRow && widget.title === text);
+for (const label of ['Show notification banners', 'Window preview size', 'Hide Dark Style',
+    'Hide maximized X11 window decorations', 'Only for maximized windows']) {
+    if (!title(label))
+        throw new Error(`Shell preference missing: ${label}`);
+}
 const themeName = title('Theme name');
 const click = text => {
     const row = title(text); const button = descendants(row).find(widget => widget instanceof Gtk.Button && widget.label);

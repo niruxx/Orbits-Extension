@@ -17,6 +17,8 @@ The accessibility check also needs Python GI/AT-SPI and the AT-SPI bus/registry 
 | --- | --- |
 | `sh scripts/check.sh` | Strict schemas, JavaScript parsing, focused models, and LTR/RTL preferences |
 | `--shell` | Dock, taskbar, launcher, tray, desktop, workspace and lifecycle integration |
+| `--customization` | Banner placement and visibility, OSD alignment, Quick Settings, workspace and window switching, and maximized-only panel buttons |
+| `--stress` | Acceptance suite with 180 lifecycle/settings cycles and six post-GC samples of live JavaScript heap nodes and Shell process PSS |
 | `--visual` | Pixel comparisons of rounded glass corners at two radii and 1×/2× scaling; live repaint |
 | `--acceptance` | Virtual keyboard/touch, RTL long labels, mixed scales, virtual rotation/output changes, fullscreen/overview, session modes, and lifecycle/settings stress |
 | `--a11y` | External AT-SPI client checks names, button role and focusability on a dedicated private accessibility bus |
@@ -27,9 +29,33 @@ The accessibility check also needs Python GI/AT-SPI and the AT-SPI bus/registry 
 ```sh
 sh tests/shellSmoke.sh
 ORBIT_SMOKE_DRIVER=tests/launcherGlassSmoke.js sh tests/shellSmoke.sh
+ORBIT_SMOKE_DRIVER=tests/shellCustomizationSmoke.js sh tests/shellSmoke.sh
+ORBIT_SMOKE_XWAYLAND=1 ORBIT_SMOKE_DRIVER=tests/shellCustomizationSmoke.js sh tests/shellSmoke.sh
 ORBIT_SMOKE_DRIVER=tests/acceptanceSmoke.js sh tests/shellSmoke.sh
 ORBIT_SMOKE_A11Y=1 ORBIT_SMOKE_DRIVER=tests/accessibilitySmoke.js sh tests/shellSmoke.sh
 ```
+
+To capture the nine launcher layouts with long mixed-direction labels, run on
+the host with a writable screenshot directory:
+
+```sh
+mkdir -p build/rtl-acceptance
+ORBIT_RTL_SCREENSHOTS="$PWD/build/rtl-acceptance" sh scripts/check.sh --acceptance
+```
+
+To exercise actual Shell-wide RTL with an installed Arabic locale and GNOME
+message catalog:
+
+```sh
+LC_ALL=ar_SA.UTF-8 LANGUAGE=ar ORBIT_EXPECT_SHELL_RTL=1 \
+  ORBIT_SMOKE_DRIVER=tests/acceptanceSmoke.js sh tests/shellSmoke.sh
+```
+
+The stress profile reports JavaScript heap-node counts and Linux proportional
+set size (PSS) for the private compositor. PSS includes native allocations and
+caches, so profile changes need investigation alongside lifecycle assertions.
+
+The optional XWayland run also needs XWayland, GTK3 and `xprop`.
 
 The harness rejects failed assertions, JavaScript errors and CRITICAL Shell logs.
 A failed runtime assertion cannot be overwritten by a subsequent PASS.

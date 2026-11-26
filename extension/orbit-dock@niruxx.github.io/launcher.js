@@ -141,14 +141,22 @@ export class Launcher {
 
     _refreshAppsContent() {
         this._reloading = true;
-        const id = this._activeItem?._orbitApp?.get_id();
-        const keyboard = this._inputMode === 'keyboard' && !this._search.contains(global.stage.get_key_focus());
-        this._loadApps(); this._rebuildCategories(); this._onSearchChanged(); this._wireNavigation();
-        if (keyboard && id) {
-            const button = this._navigationButtons().find(item => item._orbitApp?.get_id() === id);
-            if (button) this._focusItem(button);
+        try {
+            const id = this._activeItem?._orbitApp?.get_id();
+            const focus = global.stage.get_key_focus();
+            const keyboard = this._inputMode === 'keyboard' && (!focus || !this._search.contains(focus));
+            this._loadApps();
+            this._rebuildCategories();
+            this._onSearchChanged();
+            this._wireNavigation();
+            if (keyboard && id) {
+                const button = this._navigationButtons().find(item => item._orbitApp?.get_id() === id);
+                if (button)
+                    this._focusItem(button);
+            }
+        } finally {
+            this._reloading = false;
         }
-        this._reloading = false;
     }
 
     get isOpen() {

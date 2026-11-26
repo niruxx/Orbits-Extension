@@ -20,7 +20,9 @@ for option in "$@"; do
         --shell) sh tests/shellSmoke.sh ;;
         --a11y) ORBIT_SMOKE_A11Y=1 ORBIT_SMOKE_DRIVER=tests/accessibilitySmoke.js sh tests/shellSmoke.sh ;;
         --acceptance) ORBIT_SMOKE_DRIVER=tests/acceptanceSmoke.js sh tests/shellSmoke.sh ;;
+        --stress) ORBIT_ACCEPTANCE_STRESS=1 ORBIT_SMOKE_TIMEOUT=180s ORBIT_SMOKE_DRIVER=tests/acceptanceSmoke.js sh tests/shellSmoke.sh ;;
+        --customization) ORBIT_SMOKE_DRIVER=tests/shellCustomizationSmoke.js sh tests/shellSmoke.sh ;;
         --visual) ORBIT_SMOKE_DRIVER=tests/launcherGlassSmoke.js sh tests/shellSmoke.sh ;;
-        *) echo "Unknown option: $option (use --shell, --visual, --acceptance or --a11y)"; exit 1 ;;
+        *) echo "Unknown option: $option (use --shell, --visual, --acceptance, --stress, --customization or --a11y)"; exit 1 ;;
     esac
 done

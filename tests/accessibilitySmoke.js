@@ -12,7 +12,16 @@ export default class AccessibilitySmoke extends Extension {
         ext._settings.set_string('launcher-shortcuts',JSON.stringify([{id:'accessible-fixture',label:'Orbit accessibility fixture',type:'uri',target:GLib.getenv('ORBIT_SMOKE_DESKTOP'),icon:'folder-symbolic'}]));
         ext._launcher.open();ext._launcher._selectCategory('shortcuts');await this._wait(500);
         const button=ext._launcher._navigationButtons().find(item=>item._orbitApp?._orbitCustom);
-        if(!button)throw new Error('Accessible fixture missing');ext._launcher._focusItem(button);
+        if (!button) throw new Error('Accessible fixture missing');
+        const launcher = ext._launcher;
+        launcher._focusItem(button);
+        const id = button._orbitApp.get_id();
+        global.stage.set_key_focus(null);
+        launcher._reloadContent();
+        await this._wait(200);
+        const focused = global.stage.get_key_focus();
+        if (focused?._orbitApp?.get_id() !== id || launcher._reloading)
+            throw new Error('Launcher refresh did not restore the keyboard selection with no stage focus');
         this._probe=Gio.Subprocess.new(['python3',`${GLib.getenv('ORBIT_SMOKE_REPO')}/tests/accessibilityProbe.py`,'Orbit accessibility fixture'],Gio.SubprocessFlags.STDOUT_PIPE|Gio.SubprocessFlags.STDERR_PIPE);
         const [output,error]=await new Promise((resolve,reject)=>this._probe.communicate_utf8_async(null,null,(p,r)=>{try{const [,out,err]=p.communicate_utf8_finish(r);resolve([out,err]);}catch(e){reject(e);}}));
         if(!this._probe.get_successful())throw new Error(error||output);ext._launcher.close();this._write(output.trim());

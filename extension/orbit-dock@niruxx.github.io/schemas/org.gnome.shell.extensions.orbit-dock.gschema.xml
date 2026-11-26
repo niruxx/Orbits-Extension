@@ -172,6 +172,27 @@
       <default>false</default>
       <summary>Hide the Activities / workspace button</summary>
     </key>
+    <key name="top-bar-window-buttons-position" type="s">
+      <choices><choice value="left"/><choice value="center"/><choice value="right"/></choices>
+      <default>'right'</default>
+      <summary>Panel section for focused-window buttons</summary>
+    </key>
+    <key name="top-bar-window-minimize" type="b">
+      <default>false</default>
+      <summary>Show a minimize button for the focused window in GNOME’s panel</summary>
+    </key>
+    <key name="top-bar-window-maximize" type="b">
+      <default>false</default>
+      <summary>Show a maximize button for the focused window in GNOME’s panel</summary>
+    </key>
+    <key name="top-bar-window-close" type="b">
+      <default>false</default>
+      <summary>Show a close button for the focused window in GNOME’s panel</summary>
+    </key>
+    <key name="top-bar-window-buttons-maximized-only" type="b">
+      <default>false</default>
+      <summary>Show panel window buttons only for maximized windows</summary>
+    </key>
     <key name="top-bar-clock-position" type="s">
       <choices><choice value="center"/><choice value="left"/><choice value="right"/></choices>
       <default>'center'</default>
@@ -664,5 +685,55 @@
 <key name="glass-launcher-blur" type="i"><range min="0" max="100"/><default>30</default><summary>glass launcher blur</summary></key>
 <key name="glass-launcher-brightness" type="d"><range min="0.1" max="1"/><default>0.75</default><summary>glass launcher brightness</summary></key>
 <key name="glass-launcher-windows" type="b"><default>true</default><summary>glass launcher windows</summary></key>
+
+    <!-- GNOME Shell customization -->
+    <key name="shell-banner-position" type="s">
+      <choices>
+        <choice value="default"/>
+        <choice value="start-start"/><choice value="start-center"/><choice value="start-end"/>
+        <choice value="end-start"/><choice value="end-center"/><choice value="end-end"/>
+      </choices>
+      <default>'default'</default>
+      <summary>Position notification banners</summary>
+    </key>
+    <key name="shell-osd-position" type="s">
+      <choices><choice value="default"/><choice value="start-start"/><choice value="start-center"/><choice value="start-end"/><choice value="center"/><choice value="end-start"/><choice value="end-center"/><choice value="end-end"/></choices>
+      <default>'default'</default>
+      <summary>Position Shell on-screen displays</summary>
+    </key>
+    <key name="shell-switcher-delay" type="i">
+      <range min="-1" max="1000"/>
+      <default>-1</default>
+      <summary>Switcher delay in milliseconds, or -1 for the Shell default</summary>
+    </key>
+    <key name="shell-switcher-preview-size" type="i">
+      <range min="50" max="150"/>
+      <default>100</default>
+      <summary>Window preview size as a percentage of the default</summary>
+    </key>
+    <key name="shell-workspace-wraparound" type="b">
+      <default>false</default>
+      <summary>Wrap directional workspace switching at the first and last workspace</summary>
+    </key>
+    <key name="shell-hide-maximized-decorations" type="b">
+      <default>false</default>
+      <summary>Hide window-manager decorations on maximized X11 windows</summary>
+    </key>
+    <key name="shell-hide-workspace-popup" type="b">
+      <default>false</default>
+      <summary>Hide the workspace switcher popup</summary>
+    </key>
+    <key name="shell-hide-dark-style" type="b">
+      <default>false</default>
+      <summary>Hide Dark Style in Quick Settings</summary>
+    </key>
+    <key name="shell-hide-night-light" type="b">
+      <default>false</default>
+      <summary>Hide Night Light in Quick Settings</summary>
+    </key>
+    <key name="shell-hide-airplane-mode" type="b">
+      <default>false</default>
+      <summary>Hide Airplane Mode in Quick Settings</summary>
+    </key>
   </schema>
 </schemalist>

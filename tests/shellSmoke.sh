@@ -54,7 +54,13 @@ if [ "${ORBIT_SMOKE_A11Y:-0}" = 1 ]; then
 else
     set --
 fi
-timeout 40s dbus-run-session -- "$@" gnome-shell --headless --wayland --no-x11 --virtual-monitor 1280x800 --virtual-monitor 1024x768 --wayland-display "$WAYLAND_DISPLAY" > "$scratch/shell.log" 2>&1 || true
+if [ "${ORBIT_SMOKE_XWAYLAND:-0}" != 1 ]; then
+    x11_flag=--no-x11
+else
+    x11_flag=
+    unset DISPLAY XAUTHORITY
+fi
+timeout "${ORBIT_SMOKE_TIMEOUT:-40s}" dbus-run-session -- "$@" gnome-shell --headless --wayland $x11_flag --virtual-monitor 1280x800 --virtual-monitor 1024x768 --wayland-display "$WAYLAND_DISPLAY" > "$scratch/shell.log" 2>&1 || true
 if [ -f "$scratch/result" ]; then
     cat "$scratch/result"
     printf '\n'

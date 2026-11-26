@@ -6,10 +6,12 @@ import {AppButtonManager} from './appButton.js';
 import {DockManager} from './dock.js';
 import {DesktopIcons} from './desktopIcons.js';
 import {Launcher} from './launcher.js';
+import {ShellCustomization} from './shellCustomization.js';
 import {ShellModes} from './shellModes.js';
 import {TopBarManager} from './topbar.js';
 import {migrationValues} from './orbitModel.js';
 import {TrayManager} from './tray.js';
+import {WindowDecorations} from './windowDecorations.js';
 
 function attempt(name, make) {
     try {
@@ -60,6 +62,8 @@ export default class OrbitShellExtension extends Extension {
             ['shell modes', () => new ShellModes(settings, this._launcher)],
             ['app button', () => new AppButtonManager(settings)],
             ['desktop icons', () => new DesktopIcons(settings, () => this.openPreferences())],
+            ['Shell customization', () => new ShellCustomization(settings)],
+            ['window decorations', () => new WindowDecorations(settings)],
         ].map(([name, make]) => attempt(name, make));
     }
 

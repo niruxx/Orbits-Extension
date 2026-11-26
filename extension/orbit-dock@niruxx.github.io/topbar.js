@@ -6,6 +6,7 @@
 
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
+import Meta from 'gi://Meta';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -19,6 +20,8 @@ export const TOP_BAR_KEYS = new Set([
     'top-bar-transparent-opacity', 'top-bar-use-custom-color', 'top-bar-color',
     'top-bar-floating', 'top-bar-radius', 'top-bar-transition',
     'top-bar-hide-activities', 'top-bar-clock-position', 'top-bar-position', 'top-bar-height',
+    'top-bar-window-minimize', 'top-bar-window-maximize', 'top-bar-window-close',
+    'top-bar-window-buttons-position', 'top-bar-window-buttons-maximized-only',
     'dock-in-panel', 'glass-top-bar', 'glass-blur-radius', 'glass-brightness', 'glass-highlight',
 ]);
 
@@ -81,6 +84,8 @@ export class TopBarManager {
         this._applyClock(c.clockPosition);
         this._applyHeight(c.height);
         this._applyPosition(c.atBottom);
+
+        this._buildWindowButtons();
 
         // Default look without glass: leave the theme alone.
         if (c.style === 'default' && !c.glass)
@@ -270,9 +275,100 @@ export class TopBarManager {
             target.insert_child_at_index(container, 0);
     }
 
+    _buildWindowButtons() {
+        const actions = [
+            ['minimize', 'Minimize', window => window.can_minimize(), window => window.minimize()],
+            ['maximize', 'Maximize', window => isWindowMaximized(window) || window.can_maximize(), window => {
+                const toggle = isWindowMaximized(window) ? 'unmaximize' : 'maximize';
+                if (window.get_maximize_flags)
+                    window[toggle]();
+                else
+                    window[toggle](Meta.MaximizeFlags.BOTH);
+            }],
+            ['close', 'Close', window => window.can_close(), window => window.delete(global.get_current_time())],
+        ].filter(([action]) => this._settings.get_boolean(`top-bar-window-${action}`));
+        if (!actions.length)
+            return;
+
+        this._windowButtons = new St.BoxLayout({name: 'orbitTopBarWindowButtons', visible: false});
+        this._windowActions = actions.map(([action, label, allowed, activate]) => {
+            const icon = new St.Icon({icon_name: `window-${action}-symbolic`, style_class: 'system-status-icon'});
+            const button = new St.Button({
+                style_class: 'panel-button',
+                accessible_name: label,
+                can_focus: true,
+                child: icon,
+            });
+            button.connect('clicked', () => {
+                const window = this._getWindowButtonTarget();
+                if (window && window === this._focusedWindow && allowed(window))
+                    activate(window);
+            });
+            this._windowButtons.add_child(button);
+            return {action, button, icon, allowed};
+        });
+
+        const position = this._settings.get_string('top-bar-window-buttons-position');
+        const box = {
+            left: Main.panel._leftBox,
+            center: Main.panel._centerBox,
+            right: Main.panel._rightBox,
+        }[position];
+        if (position === 'right')
+            box.insert_child_at_index(this._windowButtons, 0);
+        else
+            box.add_child(this._windowButtons);
+
+        global.display.connectObject('notify::focus-window', () => this._syncWindowButtons(), this);
+        Main.overview.connectObject('showing', () => this._syncWindowButtons(),
+            'hidden', () => this._syncWindowButtons(), this);
+        this._syncWindowButtons();
+    }
+
+    _getWindowButtonTarget() {
+        const window = global.display.focus_window;
+        if (Main.overview.visibleTarget || !window || window.minimized || window.is_fullscreen())
+            return null;
+        if (this._settings.get_boolean('top-bar-window-buttons-maximized-only') && !isWindowMaximized(window))
+            return null;
+        const type = window.get_window_type();
+        return [Meta.WindowType.NORMAL, Meta.WindowType.DIALOG, Meta.WindowType.MODAL_DIALOG].includes(type)
+            ? window : null;
+    }
+
+    _syncWindowButtons() {
+        const focused = global.display.focus_window;
+        if (focused !== this._focusedWindow) {
+            this._focusedWindow?.disconnectObject(this);
+            this._focusedWindow = focused;
+            focused?.connectObject('notify', () => this._syncWindowButtons(), this);
+        }
+
+        const window = this._getWindowButtonTarget();
+        let visible = false;
+        for (const {action, button, icon, allowed} of this._windowActions) {
+            button.visible = !!window && allowed(window);
+            visible ||= button.visible;
+            if (action === 'maximize') {
+                const maximized = !!window && isWindowMaximized(window);
+                icon.icon_name = maximized ? 'window-restore-symbolic' : 'window-maximize-symbolic';
+                button.accessible_name = maximized ? 'Restore window' : 'Maximize';
+            }
+        }
+        this._windowButtons.visible = visible;
+    }
+
     // ---- teardown -----------------------------------------------------------
 
     _teardown() {
+        if (this._windowButtons) {
+            global.display.disconnectObject(this);
+            this._focusedWindow?.disconnectObject(this);
+            this._focusedWindow = null;
+            this._windowButtons.destroy();
+            this._windowButtons = null;
+            this._windowActions = null;
+        }
         this._watcher?.destroy();
         this._watcher = null;
         Main.layoutManager.panelBox.disconnectObject(this);

@@ -329,7 +329,12 @@ export class TaskbarPanel {
                 stream.volume = Math.max(0, Math.min(max, stream.volume - direction * max * 0.05));
                 stream.push_volume();
                 stream.change_is_muted(stream.volume === 0);
-                Main.osdWindowManager.show(this.dock.monitorIndex, Gio.ThemedIcon.new('audio-volume-high-symbolic'), null, stream.volume / max);
+                const manager = Main.osdWindowManager;
+                const icon = Gio.ThemedIcon.new('audio-volume-high-symbolic');
+                if (manager.showOne)
+                    manager.showOne(this.dock.monitorIndex, icon, null, stream.volume / max);
+                else
+                    manager.show(this.dock.monitorIndex, icon, null, stream.volume / max);
             }
         } else if (action === 'switch-workspace') {
             const ws = global.workspace_manager.get_active_workspace();

@@ -30,7 +30,9 @@ Checked items are not a claim of runtime validation on every supported GNOME ver
 - [x] Super/Activities integration and optional desktop startup.
 - [x] Power/session actions; places and system shortcuts in the two-column menu.
 - [x] AppIndicator/StatusNotifier tray host with DBusMenu support.
-- [x] Focused-app button and window-button layout preferences.
+- [x] Focused-app button and application title-bar button layout preferences.
+- [x] Independently selectable Minimize, Maximize / Restore and Close buttons in
+  GNOME’s panel, with left, center and right placement.
 - [x] Wallpaper-based glass for dock, bar and launcher.
 - [x] Desktop presets with an undo snapshot.
 - [x] Native desktop icons with visibility, appearance, sorting and manual arrangement controls.
@@ -110,6 +112,17 @@ and [settings schema](https://gitlab.com/arcmenu/ArcMenu/-/blob/master/schemas/o
 - [x] Menu theme controls for typography, spacing, padding, colors, borders and corners.
 - [x] Saved menu themes and settings backup/restore.
 
+## Additional GNOME Shell customization gaps
+
+- [x] Notification banner position and visibility and position of volume and
+  brightness OSDs. [Just Perfection](https://extensions.gnome.org/extension/3843/)
+- [x] Workspace wraparound, workspace switcher popup visibility, Alt+Tab preview
+  sizing and switcher popup delay. [Just Perfection](https://extensions.gnome.org/extension/3843/)
+- [x] Visibility controls for individual Quick Settings toggles, including Dark
+  Mode and Night Light. [Just Perfection](https://extensions.gnome.org/extension/3843/)
+- [x] A maximized-windows-only mode for panel buttons and optional suppression of
+  maximized X11/XWayland window-manager decorations with `xprop`. [Unite](https://extensions.gnome.org/extension/1287/unite/)
+
 ## Orbit-specific completion work
 
 These are Orbit product and engineering requirements, not claims that every
@@ -147,11 +160,12 @@ remaining manual checks. Partial items stay open until all their subchecks pass.
   - [x] External AT-SPI client reads the launcher result name, button role and focusable state.
   - [ ] Physical touchscreen: no touchscreen is exposed on this workstation; its touchpad does not establish touchscreen compatibility.
   - [ ] Orca spoken navigation and announcements: Orca is installed, but spoken-output correctness has not been verified.
-- [ ] Check long/translated text and right-to-left layouts. **Partial:** long multilingual labels in all nine RTL Shell layouts and RTL preferences pass; translation catalogs and visual RTL review remain.
+- [ ] Check long/translated text and right-to-left layouts. **Partial:** all nine RTL launcher layouts passed bounds checks and screenshot review with long multilingual labels. RTL preferences pass. The acceptance suite also passes with GNOME Shell running in Arabic RTL mode. Orbit translation catalogs remain.
 - [ ] Check multiple monitors, mixed scaling, hotplug and workspace changes. **Partial:** simultaneous 1×/4⁄3× scales, virtual output removal/restoration, bounds and workspace moves pass; 90° virtual rotation also passes; physical cable hotplug remains.
 - [ ] Check fullscreen windows, overview transitions and session lock/unlock. **Partial:** fullscreen, overview and private unlock-dialog/user transitions with a live indicator pass; authenticated lock/unlock remains.
-- [ ] Check enable/disable/re-enable and repeated settings changes for leaked actors,
-  signals, timers, modal grabs and keybindings. **Partial:** fifteen lifecycle/settings cycles verify stable actor/modal/focus-group counts, removed GLib sources, disconnected icon-theme/window handlers and balanced Orbit keybindings; prolonged heap profiling remains.
+- [x] Check enable/disable/re-enable and repeated settings changes for leaked
+  actors, signals, timers, modal grabs and keybindings. The 180-cycle profile
+  passed on GNOME Shell 51.1. Six post-GC samples showed no sustained growth.
 - [ ] Verify supported GNOME Shell versions in real sessions; record failures and limitations. **Partial:** 51.1 passes; 48–50 are not installed and remain unverified. See acceptance.md.
 - [x] Add focused regression coverage where feasible and inspect Shell logs for errors. See the executed suites and environment in acceptance.md.
 
