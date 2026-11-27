@@ -2,7 +2,7 @@
 # Invoked only inside shellSmoke.sh's private dbus-run-session.
 set -eu
 unset AT_SPI_BUS_ADDRESS
-/usr/lib/at-spi-bus-launcher --launch-immediately --a11y=1 &
+/usr/lib/at-spi-bus-launcher --launch-immediately &
 a11y_bus_pid=$!
 registry_pid=''
 cleanup() {

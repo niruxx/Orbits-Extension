@@ -1,14 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Orbit's application menu. It can replace the overview for Super, Activities
-// and the dock's applications button, and comes in several styles:
-//
-//   modern   search · pinned grid · "All apps" list · user + power footer
-//   list     one scrolling list: pinned apps, then A–Z with letter headings
-//   minimal  a compact search box with a row of pinned icons
-//   classic  categories beside the app list (Plasma Kicker style)
-//   xp       two columns (the Windows XP layout, styled like GNOME): apps on
-//            the left, folders and system places on the right
+// and the dock's applications button.
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
@@ -27,6 +20,7 @@ import * as SystemActions from 'resource:///org/gnome/shell/misc/systemActions.j
 import {GlassLayer} from './glass.js';
 import {surfaceEffects} from './effectSettings.js';
 import {canSignOut, signOut} from './sessionActions.js';
+import {scrollFromVerticalWheel} from './util.js';
 
 import {LAUNCHER_CATEGORIES as CATEGORIES, categoryOrder, parseShortcuts, jsonObject, updateInstalled} from './launcherModel.js';
 import {LauncherSearch} from './launcherSearch.js';
@@ -50,7 +44,13 @@ const STYLES = {
     grid: {width: 1100, height: 800},
     runner: {width: 620, height: 420},
     sidebar: {width: 580, height: 1000},
+    'mate-menu': {width: 350, height: 490},
+    'mate-columns': {width: 530, height: 490},
+    plasma: {width: 690, height: 560},
 };
+const CATEGORY_LAYOUTS = new Set(['arc', 'classic', 'sidebar', 'mate-menu', 'mate-columns', 'plasma']);
+const COMPACT_LAYOUTS = new Set(['mate-menu', 'mate-columns']);
+const VIEW_IDS = new Set(['favorites', 'all', 'frequent', 'new', 'recent', 'shortcuts']);
 // GNOME's own modes for the Super key (main.js: NORMAL | OVERVIEW).
 const OVERLAY_MODES = Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW;
 const MAX_SEARCH_RESULTS = 60;
@@ -322,7 +322,9 @@ export class Launcher {
         this._inputMode = 'keyboard';
         this._lastPointer = global.get_pointer().slice(0, 2);
         this._activeItem = null;
-        this._catBox = null; this._catScroll = null; this._viewBox = null; this._viewScroll = null;
+        this._catBox = null;
+        this._catScroll = null;
+        this._categoryPicker = null;
         this._sectionLabel = null;
         this._toggleButton = null;
 
@@ -357,11 +359,15 @@ export class Launcher {
         const {width: w, height: h} = STYLES[c.style];
         const width = Math.min(Math.max(320, this._settings.get_int('launcher-width') || w) * scale, monitor.width - 16 * scale);
         const height = Math.min(Math.max(280, this._settings.get_int('launcher-height') || (c.style === 'sidebar' ? monitor.height / scale - 80 : h)) * scale, monitor.height - 80 * scale);
-        this._categoryWidth = width / scale < 600 ? Math.max(100, width / scale * 0.28) : 212;
-        this._tileWidth = Math.max(c.style === 'arc' ? 108 : 88, c.gridIconSize + 16);
-        this._gridColumns = Math.max(1, Math.min(this._settings.get_int('launcher-columns'), Math.floor((width / scale - this._categoryWidth - 40) / (this._tileWidth + 2 * this._settings.get_int('launcher-item-padding') + c.spacing))));
-        this._modernColumns = Math.max(1, Math.min(this._settings.get_int('launcher-modern-columns'), Math.floor((width / scale - 44) / (this._tileWidth + 2 * this._settings.get_int('launcher-item-padding') + c.spacing))));
         this._menuWidth = width / scale;
+        this._categoryWidth = Math.min(c.style === 'arc' ? 204 : 176, Math.max(98, Math.round(this._menuWidth * 0.28)));
+        this._tileWidth = Math.max(c.style === 'arc' ? 98 : 88, c.gridIconSize + 16);
+        const tileStride = this._tileWidth + 2 * this._settings.get_int('launcher-item-padding') + c.spacing;
+        const bodyInsets = 44 + 2 * this._settings.get_int('launcher-border-width');
+        this._gridColumns = Math.max(1, Math.min(this._settings.get_int('launcher-columns'),
+            Math.floor((this._menuWidth - this._categoryWidth - bodyInsets + c.spacing) / tileStride)));
+        this._modernColumns = Math.max(1, Math.min(this._settings.get_int('launcher-modern-columns'),
+            Math.floor((this._menuWidth - 44) / tileStride)));
         this._menu = new St.Widget({name: 'orbitLauncher', layout_manager: new Clutter.BinLayout(), width, height});
 
         // Every style is a tinted panel that can sit on frosted glass.
@@ -386,21 +392,25 @@ export class Launcher {
         this._menu.add_child(content);
         this._content = content;
 
-        ({
-            modern: () => this._buildModern(content),
-            list: () => this._buildList(content),
-            minimal: () => this._buildMinimal(content),
-            classic: () => this._buildClassic(content),
-            arc: () => this._buildClassic(content),
-            xp: () => this._buildXp(content),
-            grid: () => this._buildDashboard(content),
-            runner: () => this._buildRunner(content),
-            sidebar: () => this._buildClassic(content),
-        })[c.style]();
+        if (CATEGORY_LAYOUTS.has(c.style)) {
+            this._buildCategoryLayout(content);
+        } else {
+            ({
+                modern: () => this._buildModern(content),
+                list: () => this._buildList(content),
+                minimal: () => this._buildMinimal(content),
+                xp: () => this._buildXp(content),
+                grid: () => this._buildDashboard(content),
+                runner: () => this._buildRunner(content),
+            })[c.style]();
+            if (c.style !== 'grid') content.insert_child_at_index(this._buildViewChooser(), 1);
+            if (['minimal', 'runner'].includes(c.style) && c.power) content.add_child(this._buildPowerRow());
+            if (c.style !== 'xp' && this._settings.get_boolean('launcher-show-places')) {
+                const places = this._buildPlaces();
+                if (places) content.add_child(places);
+            }
+        }
 
-        if (['minimal', 'runner'].includes(c.style) && c.power) content.add_child(this._buildPowerRow());
-        if (!['arc', 'classic', 'sidebar', 'grid'].includes(c.style)) content.insert_child_at_index(this._buildViewChooser(), 1);
-        if (c.style !== 'xp' && this._settings.get_boolean('launcher-show-places')) content.add_child(this._buildPlaces());
         this._root.add_child(this._menu);
         this._positionMenu(source ?? this._taskbarSource?.(monitor.index), monitor, width, height, scale);
         this._glass?.sync();
@@ -438,8 +448,10 @@ export class Launcher {
 
     /** The scrolling area every style uses for apps and search results. */
     _makeAppArea(styleClass = 'orbit-launcher-apps') {
+        const spacing = COMPACT_LAYOUTS.has(this._config.style) ? Math.min(2, this._config.spacing)
+            : this._config.spacing;
         this._appBox = new St.BoxLayout({style_class: styleClass, orientation: Clutter.Orientation.VERTICAL,
-            x_expand: true, style: `spacing: ${this._config.spacing}px;`});
+            x_expand: true, style: `spacing: ${spacing}px;`});
         this._appScroll = new St.ScrollView({
             child: this._appBox,
             hscrollbar_policy: St.PolicyType.NEVER,
@@ -455,11 +467,13 @@ export class Launcher {
         const box = new St.BoxLayout({style_class: 'orbit-launcher-userbox'});
         box.add_child(new St.Icon({icon_name: 'avatar-default-symbolic', icon_size: iconSize,
             style_class: 'orbit-launcher-avatar', y_align: Clutter.ActorAlign.CENTER}));
-        box.add_child(new St.Label({
+        const label = new St.Label({
             text: GLib.get_real_name() || GLib.get_user_name(),
             style_class: 'orbit-launcher-user',
             y_align: Clutter.ActorAlign.CENTER,
-        }));
+        });
+        label.clutter_text.ellipsize = ELLIPSIZE_END;
+        box.add_child(label);
         return box;
     }
 
@@ -477,6 +491,7 @@ export class Launcher {
         const bar = new St.BoxLayout({style_class: 'orbit-launcher-section'});
         this._sectionLabel = new St.Label({text: title, style_class: 'orbit-launcher-section-title',
             x_expand: true, y_align: Clutter.ActorAlign.CENTER});
+        this._sectionLabel.clutter_text.ellipsize = ELLIPSIZE_END;
         bar.add_child(this._sectionLabel);
         if (toggleLabel) {
             this._toggleButton = new St.Button({style_class: 'orbit-launcher-toggle', can_focus: true,
@@ -501,34 +516,23 @@ export class Launcher {
     _buildPowerRow() {
         const actions = SystemActions.getDefault();
         const row = new St.BoxLayout({style_class: 'orbit-launcher-power',
-            x_align: ['arc', 'classic'].includes(this._config.style) ? Clutter.ActorAlign.FILL : Clutter.ActorAlign.END});
-        const available = this._availablePowerActions(actions);
-        if (!available.some(action => action.label === 'Sign Out')) available.push(POWER_ACTIONS.find(action => action.label === 'Sign Out'));
-        for (const action of available) {
+            x_align: Clutter.ActorAlign.END});
+        const signOutAvailable = canSignOut();
+        for (const action of this._availablePowerActions(actions)) {
+            const isSignOut = action.label === 'Sign Out';
             const button = new St.Button({
-                style_class: 'orbit-launcher-power-button', can_focus: action.label !== 'Sign Out' || canSignOut(),
-                reactive: action.label !== 'Sign Out' || canSignOut(), accessible_name: action.label,
-                child: new St.Icon({icon_name: action.icon, icon_size: 16}),
+                style_class: 'orbit-launcher-power-button', can_focus: !isSignOut || signOutAvailable,
+                reactive: !isSignOut || signOutAvailable, accessible_name: action.label,
+                child: isSignOut ? this._iconLabel(action.icon, action.label, 16)
+                    : new St.Icon({icon_name: action.icon, icon_size: 16}),
             });
-            if (action.label === 'Sign Out') {
-                const label = new St.BoxLayout({style: 'spacing: 6px;'});
-                label.add_child(new St.Icon({icon_name: action.icon, icon_size: 16}));
-                label.add_child(new St.Label({text: 'Sign Out', y_align: Clutter.ActorAlign.CENTER}));
-                button.set_child(label);
-            }
             button.connect('clicked', () => {
+                if (isSignOut && !canSignOut()) return;
                 this.close();
-                if (action.label !== 'Sign Out' || canSignOut()) action.run(actions);
-            });
-            button.connect('notify::hover', () => {
-                this._powerLabel.text = button.hover ? action.label : '';
+                action.run(actions);
             });
             row.add_child(button);
         }
-        if (this._config.style === 'arc' || this._config.style === 'classic')
-            row.set_style(`background-color: rgba(0,0,0,${this._settings.get_double('launcher-footer-opacity')}); border-radius: 8px;`);
-        this._powerLabel = new St.Label({style_class: 'orbit-launcher-power-label', y_align: Clutter.ActorAlign.CENTER});
-        row.insert_child_at_index(this._powerLabel, 0);
         return row;
     }
 
@@ -564,27 +568,93 @@ export class Launcher {
         content.add_child(this._makeAppArea());
     }
 
-    _buildClassic(content) {
+    _buildCategoryLayout(content) {
+        const style = this._config.style;
+        const compact = COMPACT_LAYOUTS.has(style);
+        const singlePane = style === 'mate-menu';
+        const hasHeading = compact || style === 'arc' || style === 'plasma';
         const header = new St.BoxLayout({style_class: 'orbit-launcher-header'});
-        header.add_child(this._userBox());
+        if (!compact && style !== 'plasma')
+            header.add_child(this._userBox());
         header.add_child(this._makeSearch());
         content.add_child(header);
 
         const body = new St.BoxLayout({style_class: 'orbit-launcher-body', y_expand: true});
         this._catBox = new St.BoxLayout({style_class: 'orbit-launcher-categories',
             orientation: Clutter.Orientation.VERTICAL});
-        this._catBox.set_style(`width: ${this._categoryWidth}px;`);
+        if (!singlePane)
+            this._catBox.set_style(`width: ${this._categoryWidth}px;`);
         this._catScroll = new St.ScrollView({
             child: this._catBox, hscrollbar_policy: St.PolicyType.NEVER,
-            vscrollbar_policy: St.PolicyType.AUTOMATIC, overlay_scrollbars: true,
+            vscrollbar_policy: singlePane ? St.PolicyType.AUTOMATIC : St.PolicyType.EXTERNAL,
         });
-        body.add_child(this._catScroll);
-        body.add_child(this._makeAppArea());
+        if (!singlePane)
+            body.add_child(this._catScroll);
+        const pane = new St.BoxLayout({style_class: 'orbit-launcher-app-pane',
+            orientation: Clutter.Orientation.VERTICAL, x_expand: true});
+        if (hasHeading) {
+            const section = this._sectionBar('', null);
+            if (singlePane) {
+                this._categoryPicker = new St.Button({label: 'Categories', can_focus: true,
+                    style_class: 'orbit-launcher-toggle'});
+                this._categoryPicker.connect('clicked', () => this._toggleCategoryPicker());
+                section.add_child(this._categoryPicker);
+            }
+            pane.add_child(section);
+        }
+        pane.add_child(this._makeAppArea());
+        if (singlePane) {
+            this._catScroll.y_expand = true;
+            this._catScroll.hide();
+            pane.add_child(this._catScroll);
+        }
+        body.add_child(pane);
         content.add_child(body);
 
         this._rebuildCategories();
+        const places = this._settings.get_boolean('launcher-show-places') ? this._buildPlaces() : null;
+        if (!places && !this._config.power) return;
+        const footer = new St.BoxLayout({style_class: 'orbit-launcher-category-footer'});
+        if (style === 'arc' || style === 'classic')
+            footer.set_style(`background-color: rgba(0,0,0,${this._settings.get_double('launcher-footer-opacity')});`);
+        footer.add_child(places ?? new St.Widget({x_expand: true}));
         if (this._config.power)
-            content.add_child(this._buildPowerRow());
+            footer.add_child(this._buildPowerRow());
+        content.add_child(footer);
+    }
+
+    _toggleCategoryPicker() {
+        if (this._catScroll.visible) {
+            this._selectCategory(this._currentCategory);
+            return;
+        }
+        this._search.set_text('');
+        this._catScroll.show();
+        this._appScroll.hide();
+        this._sectionLabel.text = 'Applications';
+        this._categoryPicker.label = 'Back';
+        this._wireNavigation();
+        if (this._inputMode === 'keyboard')
+            this._focusItem(this._catButtons.get(this._currentCategory) ?? this._catButtons.values().next().value);
+    }
+
+    _showCategoryApps() {
+        if (!this._categoryPicker || !this._catScroll.visible) return;
+        const focus = global.stage.get_key_focus();
+        if (focus && this._catBox.contains(focus))
+            this._search.grab_key_focus();
+        this._catScroll.hide();
+        this._appScroll.show();
+        this._categoryPicker.label = 'Categories';
+    }
+
+    _activateCategory(id) {
+        if (this._search.get_text()) {
+            this._currentCategory = id;
+            this._search.set_text('');
+        } else {
+            this._selectCategory(id);
+        }
     }
 
     _rebuildCategories() {
@@ -592,44 +662,70 @@ export class Launcher {
         if (this._hoverId) { GLib.source_remove(this._hoverId); this._hoverId = 0; }
         if (global.stage.get_key_focus() && this._catBox.contains(global.stage.get_key_focus())) this._search.grab_key_focus();
         this._catButtons.clear(); this._catBox.destroy_all_children();
+        const style = this._config.style;
+        const hoverCategories = style !== 'mate-menu' && style !== 'plasma';
         for (const cat of this._categories()) {
             if (!this._settings.get_boolean('launcher-show-empty-categories') && !['favorites', 'all', 'recent', 'shortcuts'].includes(cat.id) && !this._categoryApps(cat.id).length)
                 continue;
+            const child = this._iconLabel(cat.icon, cat.name, 16);
+            if (style === 'mate-menu') {
+                child.x_align = Clutter.ActorAlign.FILL;
+                const arrow = new St.Icon({icon_size: 12, y_align: Clutter.ActorAlign.CENTER});
+                const updateArrow = () => {
+                    arrow.icon_name = arrow.get_text_direction() === Clutter.TextDirection.RTL
+                        ? 'go-next-symbolic-rtl' : 'go-next-symbolic';
+                };
+                arrow.connect('notify::text-direction', updateArrow);
+                child.add_child(arrow);
+                updateArrow();
+            }
             const button = new St.Button({style_class: 'orbit-launcher-category', can_focus: true, accessible_name: cat.name,
-                x_expand: true, child: this._iconLabel(cat.id === 'favorites' && this._config.style === 'arc'
-                    ? 'view-pin-symbolic' : cat.icon,
-                cat.name, 16)});
-            button._orbitCategory = cat.id;
-            button.connect('clicked', () => this._selectCategory(cat.id));
-            button.connect('notify::hover', () => {
-                // Kicker-style: hovering a category switches to it after a beat.
-                if (this._hoverId)
-                    GLib.source_remove(this._hoverId);
-                this._hoverId = 0;
-                if (button.hover && this._inputMode === 'pointer' && !this._search.get_text()) {
-                    this._hoverId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, this._settings.get_int('launcher-hover-delay'), () => {
-                        this._hoverId = 0;
-                        if (button.hover && this._inputMode === 'pointer' && this._currentCategory !== cat.id)
-                            this._selectCategory(cat.id);
-                        return GLib.SOURCE_REMOVE;
-                    });
-                }
+                x_expand: true, child});
+            button.connect('clicked', () => {
+                this._activateCategory(cat.id);
+                if (this._categoryPicker && this._inputMode === 'keyboard')
+                    this._focusItem(this._firstItem() ?? this._categoryPicker);
             });
+            if (hoverCategories) {
+                button._orbitCategory = cat.id;
+                button.connect('notify::hover', () => this._queueCategoryHover(button, cat.id));
+            }
+            if (cat.id === this._currentCategory && !this._search.get_text())
+                button.add_style_pseudo_class('checked');
             this._catButtons.set(cat.id, button);
             this._catBox.add_child(button);
         }
     }
 
+    _queueCategoryHover(button, id) {
+        if (this._hoverId) GLib.source_remove(this._hoverId);
+        this._hoverId = 0;
+        if (!button.hover || this._inputMode !== 'pointer' || this._search.get_text()) return;
+        this._hoverId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, this._settings.get_int('launcher-hover-delay'), () => {
+            this._hoverId = 0;
+            if (button.hover && this._inputMode === 'pointer' && !this._search.get_text() && this._currentCategory !== id)
+                this._selectCategory(id);
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    _shortcutStrip(box) {
+        const scroll = new St.ScrollView({child: box, hscrollbar_policy: St.PolicyType.EXTERNAL,
+            vscrollbar_policy: St.PolicyType.NEVER, x_expand: true});
+        scroll.connect('scroll-event', (_scroll, event) => scrollFromVerticalWheel(scroll.hadjustment, event));
+        return scroll;
+    }
+
     _buildViewChooser() {
         const box = new St.BoxLayout({style_class: 'orbit-launcher-grid-row'});
-        this._viewScroll = new St.ScrollView({child: box, hscrollbar_policy: St.PolicyType.AUTOMATIC, vscrollbar_policy: St.PolicyType.NEVER});
-        this._viewBox = box;
         for (const cat of this._categories()) {
-            if (!['favorites', 'all', 'frequent', 'new', 'recent', 'shortcuts'].includes(cat.id)) continue;
+            if (!VIEW_IDS.has(cat.id)) continue;
             const button = new St.Button({label: cat.name, can_focus: true, style_class: 'orbit-launcher-category'});
-            button.connect('clicked', () => this._selectCategory(cat.id)); this._catButtons.set(cat.id, button); box.add_child(button);
+            button.connect('clicked', () => this._activateCategory(cat.id));
+            this._catButtons.set(cat.id, button);
+            box.add_child(button);
         }
-        return this._viewScroll;
+        return this._shortcutStrip(box);
     }
 
     _buildRunner(content) {
@@ -664,7 +760,10 @@ export class Launcher {
                 child: new St.Icon({icon_name: item.icon, icon_size: 20})});
             button.connect('clicked', () => { this.close(); this._runAction(item.run); }); box.add_child(button);
         }
-        return new St.ScrollView({child: box, hscrollbar_policy: St.PolicyType.AUTOMATIC, vscrollbar_policy: St.PolicyType.NEVER});
+        if (box.get_n_children())
+            return this._shortcutStrip(box);
+        box.destroy();
+        return null;
     }
 
     _runAction(run) {
@@ -799,27 +898,35 @@ export class Launcher {
     }
 
     _renderCategory(id) {
+        this._showCategoryApps();
         this._currentCategory = id;
+        const style = this._config.style;
+        if (CATEGORY_LAYOUTS.has(style) && this._sectionLabel)
+            this._sectionLabel.text = this._categories().find(cat => cat.id === id)?.name ?? 'Applications';
         this._searchService.cancel(); this._recentCancel?.cancel();
         for (const [catId, button] of this._catButtons) {
             if (catId === id) button.add_style_pseudo_class('checked'); else button.remove_style_pseudo_class('checked');
         }
         if (id === 'recent') { this._showRecent(); return; }
+        if (CATEGORY_LAYOUTS.has(style)) {
+            const apps = this._categoryApps(id).map(entry => entry.app);
+            if (style === 'arc' || (style === 'plasma' && id === 'favorites'))
+                this._showGrid(apps, this._gridColumns, true);
+            else
+                this._showApps(apps);
+            return;
+        }
         if (['new', 'shortcuts'].includes(id)) {
             if (this._sectionLabel) this._sectionLabel.text = id === 'new' ? 'Newly Installed' : 'Shortcuts';
             this._showApps(this._categoryApps(id).map(entry => entry.app)); return;
         }
         if (id === 'frequent') {
             if (this._sectionLabel) this._sectionLabel.text = 'Frequently Used';
-            for (const [catId, button] of this._catButtons) {
-                if (catId === id) button.add_style_pseudo_class('checked');
-                else button.remove_style_pseudo_class('checked');
-            }
             this._showApps(this._categoryApps(id).map(entry => entry.app));
             return;
         }
         const all = this._apps.map(a => a.app);
-        switch (this._config.style) {
+        switch (style) {
         case 'grid':
             if (this._sectionLabel) this._sectionLabel.text = id;
             this._showGrid(id === 'favorites' ? this._favorites : this._categoryApps(id).map(entry => entry.app), this._modernColumns, true); return;
@@ -827,7 +934,6 @@ export class Launcher {
             this._showApps(id === 'favorites' ? this._favorites : this._categoryApps(id).map(entry => entry.app)); return;
         case 'modern': {
             const pinned = id === 'favorites';
-            if (id === 'frequent') { this._sectionLabel.text = 'Frequently Used'; this._showApps(this._categoryApps(id).map(entry => entry.app)); return; }
             this._sectionLabel.text = pinned ? 'Pinned' : 'All apps';
             this._toggleButton.label = pinned ? 'All apps  ›' : '‹  Back';
             if (pinned)
@@ -854,18 +960,6 @@ export class Launcher {
                 this._showXpCategory(id);
             return;
         }
-        // classic
-        for (const [catId, button] of this._catButtons) {
-            if (catId === id)
-                button.add_style_pseudo_class('checked');
-            else
-                button.remove_style_pseudo_class('checked');
-        }
-        const apps = this._categoryApps(id).map(a => a.app);
-        if (this._config.style === 'arc')
-            this._showGrid(apps, this._gridColumns, true);
-        else
-            this._showApps(apps);
     }
 
     _clearApps() {
@@ -874,6 +968,7 @@ export class Launcher {
         if (focus && this._appBox.contains(focus)) this._search.grab_key_focus();
         if (this._activeItem && this._appBox.contains(this._activeItem)) this._activeItem = null;
         this._appBox.destroy_all_children();
+        this._appScroll.vadjustment.remove_transition('value');
         this._appScroll.vadjustment.value = 0;
     }
 
@@ -892,7 +987,8 @@ export class Launcher {
         this._wireNavigation();
     }
 
-    _showGrid(apps, columns, labels) {
+    _showGrid(apps, columns, labels, emptyText = this._currentCategory === 'favorites'
+        ? 'No pinned applications' : 'No applications found') {
         this._clearApps();
         let row = null;
         apps.forEach((app, i) => {
@@ -903,7 +999,7 @@ export class Launcher {
             row.add_child(this._appTile(app, labels));
         });
         if (!apps.length)
-            this._empty('Nothing pinned yet: right-click an app to pin it');
+            this._empty(emptyText);
         this._wireNavigation();
     }
 
@@ -1001,7 +1097,9 @@ export class Launcher {
         const c = this._config;
         const box = new St.BoxLayout({style_class: 'orbit-launcher-app-box', x_expand: true,
             x_align: Clutter.ActorAlign.START});
-        box.add_child(app.create_icon_texture(iconSize ?? c.iconSize));
+        const icon = app.create_icon_texture(iconSize ?? (COMPACT_LAYOUTS.has(c.style) ? Math.min(c.iconSize, 22) : c.iconSize));
+        icon.y_align = Clutter.ActorAlign.CENTER;
+        box.add_child(icon);
         const text = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL,
             y_align: Clutter.ActorAlign.CENTER, x_expand: true});
         const name = new St.Label({text: app.get_name(), style_class: bold ? 'orbit-launcher-app-name orbit-bold' : 'orbit-launcher-app-name'});
@@ -1030,12 +1128,8 @@ export class Launcher {
         box.add_child(icon);
         if (withLabel) {
             const label = new St.Label({text: app.get_name(), style_class: 'orbit-launcher-tile-name',
-                x_align: Clutter.ActorAlign.CENTER});
+                x_expand: true});
             label.clutter_text.ellipsize = ELLIPSIZE_END;
-            if (this._config.style === 'arc') {
-                label.clutter_text.line_wrap = true;
-                label.clutter_text.line_wrap_mode = 2; // Pango.WrapMode.WORD_CHAR
-            }
             box.add_child(label);
         }
         const button = new St.Button({style_class: withLabel ? 'orbit-launcher-tile' : 'orbit-launcher-tile orbit-icon-only',
@@ -1048,15 +1142,19 @@ export class Launcher {
     }
 
     _scrollTo(actor) {
+        if (!actor.has_allocation()) return;
+        const box = actor.get_parent();
+        const scroll = box?.get_parent();
+        if (scroll instanceof St.ScrollView && scroll.hscrollbar_policy === St.PolicyType.EXTERNAL) {
+            const [ax] = actor.get_transformed_position();
+            const [bx] = box.get_transformed_position();
+            const x = box.get_text_direction() === Clutter.TextDirection.RTL
+                ? box.width - (ax - bx + actor.width) : ax - bx;
+            scroll.hadjustment.clamp_page(x, x + actor.width);
+            return;
+        }
         const inApps = this._appBox.contains(actor);
         const inCategories = this._catBox?.contains(actor);
-        if (this._viewBox?.contains(actor)) {
-            const adj = this._viewScroll.hadjustment;
-            const [ax] = actor.get_transformed_position(), [bx] = this._viewBox.get_transformed_position();
-            const x = ax - bx;
-            const value = x < adj.value ? x : x + actor.width > adj.value + adj.page_size ? x + actor.width - adj.page_size : adj.value;
-            adj.value = Math.max(adj.lower, Math.min(Math.max(adj.lower, adj.upper - adj.page_size), value)); return;
-        }
         if (!inApps && !inCategories) return;
         const content = inApps ? this._appBox : this._catBox;
         const adj = (inApps ? this._appScroll : this._catScroll).vadjustment;
@@ -1081,9 +1179,11 @@ export class Launcher {
         this._searchService.cancel(); this._recentCancel?.cancel();
         const query = this._search.get_text().trim().toLowerCase();
         if (!query) {
-            this._selectCategory(this._currentCategory ?? 'all');
+            if (!this._categoryPicker || !this._catScroll.visible)
+                this._selectCategory(this._currentCategory ?? 'all');
             return;
         }
+        this._showCategoryApps();
         if (this._sectionLabel)
             this._sectionLabel.text = 'Results';
         if (this._toggleButton)
@@ -1103,7 +1203,7 @@ export class Launcher {
         scored.sort((a, b) => a[0] - b[0] || a[1].get_name().localeCompare(b[1].get_name()));
         const limit = this._config.style === 'minimal' ? 8 : MAX_SEARCH_RESULTS;
         if (this._config.style === 'arc') {
-            this._showGrid(scored.slice(0, limit).map(s => s[1]), this._gridColumns, true);
+            this._showGrid(scored.slice(0, limit).map(s => s[1]), this._gridColumns, true, 'No applications found');
             this._searchExtras(query); return;
         }
         this._showApps(scored.slice(0, limit).map(s => s[1]),
@@ -1199,11 +1299,14 @@ export class Launcher {
         for (const button of this._navigationButtons()) {
             if (button._orbitNavigationWired) continue;
             button._orbitNavigationWired = true;
-            button.set_style(`${button.get_style() ?? ''} padding: ${this._settings.get_int('launcher-item-padding')}px; transition-duration: ${this._settings.get_int('launcher-transition-time')}ms;`);
+            const padding = button.has_style_class_name('orbit-launcher-power-button') ? ''
+                : `padding: ${this._settings.get_int('launcher-item-padding')}px;`;
+            button.set_style(`${button.get_style() ?? ''} ${padding} transition-duration: ${this._settings.get_int('launcher-transition-time')}ms;`);
             button._orbitBaseStyle = button.get_style();
             button.connect('key-focus-in', () => {
                 if (this._activeItem !== button) this._focusItem(button);
-                if (button._orbitCategory && this._inputMode === 'keyboard' && this._currentCategory !== button._orbitCategory)
+                if (button._orbitCategory && this._inputMode === 'keyboard' && !this._search.get_text() &&
+                    this._currentCategory !== button._orbitCategory)
                     this._selectCategory(button._orbitCategory);
             });
             button.connect('notify::hover', () => {
@@ -1310,7 +1413,8 @@ export class Launcher {
         if (direction) {
             if (this._search.contains(focus)) {
                 if (direction !== 'down') return Clutter.EVENT_PROPAGATE;
-                this._focusItem(this._firstItem());
+                this._focusItem(this._firstItem() ?? (this._categoryPicker && this._catScroll.visible
+                    ? this._catButtons.values().next().value : null));
             } else {
                 const items = [this._search, ...this._navigationButtons()].map(actor => {
                     const [x, y] = actor.get_transformed_position();
@@ -1324,6 +1428,8 @@ export class Launcher {
             if (this._search.get_text()) {
                 this._search.set_text('');
                 this._search.grab_key_focus();
+            } else if (this._categoryPicker && this._catScroll.visible) {
+                this._selectCategory(this._currentCategory);
             } else {
                 this.close();
             }

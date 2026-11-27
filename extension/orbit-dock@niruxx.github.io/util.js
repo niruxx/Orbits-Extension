@@ -1,6 +1,29 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
+
+export function scrollFromVerticalWheel(adjustment, event) {
+    if (adjustment.upper - adjustment.lower <= adjustment.page_size ||
+        event.get_flags() & Clutter.EventFlags.POINTER_EMULATED)
+        return Clutter.EVENT_PROPAGATE;
+
+    const direction = event.get_scroll_direction();
+    let delta;
+    if (direction === Clutter.ScrollDirection.SMOOTH) {
+        const [dx, dy] = event.get_scroll_delta();
+        if (Math.abs(dx) >= Math.abs(dy)) return Clutter.EVENT_PROPAGATE;
+        delta = dy;
+    } else if (direction === Clutter.ScrollDirection.UP) {
+        delta = -1;
+    } else if (direction === Clutter.ScrollDirection.DOWN) {
+        delta = 1;
+    } else {
+        return Clutter.EVENT_PROPAGATE;
+    }
+    adjustment.adjust_for_scroll_event(delta);
+    return Clutter.EVENT_STOP;
+}
 
 export function parseHexColor(hex, fallback = [0, 0, 0]) {
     const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex ?? '');

@@ -35,7 +35,7 @@ ORBIT_SMOKE_DRIVER=tests/acceptanceSmoke.js sh tests/shellSmoke.sh
 ORBIT_SMOKE_A11Y=1 ORBIT_SMOKE_DRIVER=tests/accessibilitySmoke.js sh tests/shellSmoke.sh
 ```
 
-To capture the nine launcher layouts with long mixed-direction labels, run on
+To capture the launcher layouts with long mixed-direction labels, run on
 the host with a writable screenshot directory:
 
 ```sh

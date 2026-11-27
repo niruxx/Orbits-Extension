@@ -13,7 +13,8 @@ Open **Launcher** in preferences to choose the menu style and how Super, Activit
 
 ## Styles and behavior
 
-**Launcher**: an app menu in nine styles (Launcher → Menu style):
+Choose a layout under **Launcher → Menu style**.
+
 - *Modern*: search, a pinned grid and an All apps list, with user and power buttons (Windows 11 style)
 - *List view*: one scrolling list, pinned apps first, then A–Z with letter headings
 - *Minimal*: a compact, centred search box with a row of pinned icons; results appear as you type
@@ -24,10 +25,12 @@ Open **Launcher** in preferences to choose the menu style and how Super, Activit
   and All Apps on the left; folders, Settings, Software and Run… on the right; Sign Out and
   Power Off at the bottom. Optionally, All Apps is grouped into category folders
   (Launcher → Group All Apps into categories).
-
 - *Dashboard*: a wide grid with view tabs.
 - *Runner*: centered search and results.
 - *Sidebar*: a tall category menu.
+- *MATE Menu*: a compact app list that opens a separate category view with the **Categories** button.
+- *MATE Columns*: compact app rows beside a category list. Hover over a category to browse it.
+- *Plasma*: search across the top, a category sidebar, a pinned-app grid and app lists for other views. Click a category to switch views.
 
 It can replace the overview for the Super key and the Activities button, and Orbit can
 skip the overview at login.
@@ -52,6 +55,8 @@ can show pins, all apps or frequently used apps; frequency uses GNOME’s existi
 Menu width, height, Arc column count, grid icon size, font size, background colour and opacity
 are configurable. Grids adapt to the available monitor space. A custom launcher shortcut
 (default **Super+Alt+Space**) is available alongside the existing Super-key action.
+The Arc category rail scrolls without a visible bar. Application results show a vertical
+bar when they overflow. The session buttons keep their positions on hover.
 
 Selecting **Arc Menu** automatically enables a bottom taskbar when **Enable bottom taskbar
 with Arc Menu** is on. Existing per-monitor overrides remain in effect. Other menu styles
@@ -60,10 +65,8 @@ mode, opacity, opacity near windows and glass. **Menu bottom strip opacity** sep
 controls the power-action strip inside the Arc/Classic menu. These controls apply on the
 next menu opening; taskbar appearance settings apply live.
 
-**Additional launcher views**: Dashboard provides a wide application grid with view tabs;
-Runner puts search and results at the top center of the screen; Sidebar provides a tall
-category menu. All nine layouts offer pinned, all, frequent, newly installed, recent-file
-and custom-shortcut views. Category names, order, visibility and empty-category behavior
+All layouts offer pinned, all, frequent, newly installed, recent-file and custom-shortcut
+views. Category names, order, visibility and empty-category behavior
 are editable. Width, height, per-layout grid columns and icon sizes are configurable, and
 placement can follow the taskbar or use a fixed screen corner/center.
 

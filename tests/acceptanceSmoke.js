@@ -90,6 +90,7 @@ export default class AcceptanceSmoke extends Extension {
         await this._key(Clutter.KEY_Escape);this._assert(!launcher.isOpen,'Virtual Escape did not close launcher');
         this._assert(global.stage.get_key_focus()===this._probe,'Launcher did not restore previous keyboard focus');
         launcher.open();launcher._selectCategory('favorites');await this._wait();const all=launcher._catButtons.get('all');const [cx,cy]=all.get_transformed_position();await this._tap(cx+all.width/2,cy+all.height/2);this._assert(launcher._currentCategory==='all','Virtual touch did not select category');
+        await this._checkLauncherScrollAndHover(launcher);
         await this._tap(monitor.x+3,monitor.y+monitor.height-3);this._assert(!launcher.isOpen,'Virtual outside touch did not close launcher');
         const direction = Clutter.TextDirection.RTL;
         try{
@@ -97,11 +98,19 @@ export default class AcceptanceSmoke extends Extension {
             settings.set_string('launcher-category-names',JSON.stringify({favorites:'تطبيقات مثبتة — '+ 'Long translated text '.repeat(3),all:'כל היישומים — '+ 'Long translated text '.repeat(3)}));
             settings.set_string('launcher-shortcuts',JSON.stringify([{id:'acceptance-long',label:'تطبيق طويل — '+'Long application name '.repeat(3),type:'uri',target:GLib.getenv('ORBIT_SMOKE_DESKTOP'),icon:'folder-symbolic'}]));
             settings.set_int('launcher-width',480);settings.set_int('launcher-height',400);
-            for(const style of ['modern','list','minimal','classic','arc','xp','grid','runner','sidebar']){
+            for(const style of ['modern','list','minimal','classic','arc','xp','grid','runner','sidebar',
+                'mate-menu','mate-columns','plasma']){
+                settings.set_int('launcher-width', style === 'mate-menu' ? 0 : 480);
                 settings.set_string('launcher-style',style);launcher.open();launcher._selectCategory('favorites');
                 const rtl=actor=>{actor.set_text_direction(direction);actor.get_children().forEach(rtl);};rtl(launcher._root);await this._wait(120);
                 this._assert(launcher._menu.width<=monitor.width&&launcher._content.width<=launcher._menu.width+1,`RTL long-text overflow in ${style}`);
                 for(const button of launcher._navigationButtons())if(button._orbitApp||button._orbitResult)this._assert(!!button.accessible_name||!!button._orbitApp.get_name(),`Missing accessible application name in ${style}`);
+                if (style === 'mate-menu') {
+                    launcher._categoryPicker.emit('clicked', 1);
+                    await this._wait(120);
+                    this._assert(launcher._catScroll.visible && launcher._content.width <= launcher._menu.width + 1,
+                        `MATE category browser exceeded its default menu width: ${launcher._content.width} > ${launcher._menu.width}`);
+                }
                 await this._captureRtl(style, monitor);
                 launcher.close();
             }
@@ -176,6 +185,32 @@ export default class AcceptanceSmoke extends Extension {
         this._probe.destroy();this._probe=null;this._fixture.force_exit();this._fixture=null;
         const result = `PASS: Virtual keyboard/touch, focus restore, RTL long text, mixed scaling/rotation and virtual output removal/restoration, fullscreen/overview, session-mode round trip and ${cycles} lifecycle/settings cycles with timer/signal/keybinding cleanup`;
         this._write([result, ...profile].join('\n'));
+    }
+
+    async _checkLauncherScrollAndHover(launcher) {
+        const footer = launcher._content.get_last_child();
+        const power = footer.get_children().find(child => child.has_style_class_name('orbit-launcher-power'));
+        const buttons = power?.get_children() ?? [];
+        this._assert(buttons.some(button => button.accessible_name === 'Sign Out'), 'Arc Sign Out label is missing');
+        const geometry = () => JSON.stringify(buttons.map(button =>
+            [...button.get_transformed_position(), ...button.get_transformed_size()]));
+        const before = geometry();
+        for (const button of buttons.filter(button => button.reactive)) {
+            const [x, y] = button.get_transformed_position();
+            const cx = x + button.width / 2, cy = y + button.height / 2;
+            const picked = global.stage.get_actor_at_pos(Clutter.PickMode.REACTIVE, cx, cy);
+            this._assert(picked && button.contains(picked), `Arc footer button cannot be reached: ${button.accessible_name}`);
+            button.set_hover(true);
+            await this._wait(100);
+            this._assert(geometry() === before, `Arc footer moved on hover over ${button.accessible_name}: ${before} → ${geometry()}`);
+            button.set_hover(false);
+        }
+        this._assert(launcher._catScroll.vscrollbar_policy === St.PolicyType.EXTERNAL &&
+            !launcher._catScroll.get_vscrollbar_visible(), 'Arc category rail shows a scrollbar');
+        this._assert(launcher._appScroll.vscrollbar_policy === St.PolicyType.AUTOMATIC &&
+            !launcher._appScroll.get_hscrollbar_visible(), 'Arc results scrollbar policy is incorrect');
+        for (const strip of footer.get_children().filter(child => child instanceof St.ScrollView))
+            this._assert(!strip.get_hscrollbar_visible() && !strip.get_vscrollbar_visible(), 'Arc places strip shows a scrollbar');
     }
     disable(){this._indicator?.unexport();this._fixture?.force_exit();this._probe?.destroy();this._timers?.forEach(id=>GLib.source_remove(id));this._timers?.clear();this._keyboard=null;this._touch=null;}
 }

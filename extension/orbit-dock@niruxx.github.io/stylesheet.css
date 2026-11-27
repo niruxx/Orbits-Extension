@@ -153,7 +153,6 @@
   spacing: 8px;
 }
 .orbit-launcher-categories {
-  width: 190px;
   spacing: 2px;
   padding-right: 4px;
 }
@@ -194,16 +193,16 @@
   padding-top: 6px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
-.orbit-launcher-power-label {
-  padding-right: 8px;
-  color: rgba(242, 242, 244, 0.7);
-}
 .orbit-launcher-power-button {
-  border-radius: 999px;
-  padding: 8px;
+  border-radius: 8px;
+  padding: 6px;
+}
+.orbit-launcher-power-button .orbit-launcher-iconlabel {
+  spacing: 6px;
 }
 .orbit-launcher-power-button:hover,
-.orbit-launcher-power-button:focus {
+.orbit-launcher-power-button:focus,
+.orbit-launcher-power-button:selected {
   background-color: rgba(255, 255, 255, 0.12);
 }
 
@@ -277,7 +276,7 @@
 }
 .orbit-launcher-tile-name {
   font-size: 0.85em;
-  max-width: 80px;
+  text-align: center;
 }
 .orbit-launcher-footer {
   padding: 10px 6px 0;
@@ -377,18 +376,59 @@
 .orbit-xp-footer-button:hover,
 .orbit-xp-footer-button:focus { background-color: rgba(255, 255, 255, 0.12); }
 
-/* Arc-style menu: category rail and four columns of large application tiles. */
-.orbit-launcher-arc { padding: 10px 6px 8px; spacing: 12px; border-radius: 14px; }
-.orbit-launcher-arc .orbit-launcher-header { padding: 0 8px; spacing: 24px; }
-.orbit-launcher-arc .orbit-launcher-userbox { width: 200px; }
-.orbit-launcher-arc .orbit-launcher-categories { width: 212px; spacing: 2px; }
-.orbit-launcher-arc .orbit-launcher-category { padding: 8px 12px; border-radius: 8px; }
-.orbit-launcher-arc .orbit-launcher-category:checked { background-color: #2167a3; }
-.orbit-launcher-arc .orbit-launcher-grid-row { spacing: 6px; }
-.orbit-launcher-arc .orbit-launcher-tile { width: 108px; padding: 10px 4px; }
-.orbit-launcher-arc .orbit-launcher-tile-name { max-width: 104px; text-align: center; }
-.orbit-launcher-arc .orbit-launcher-power { padding: 8px 10px 0; }
-.orbit-launcher-arc .orbit-launcher-power-label { padding-right: 0; }
+.orbit-launcher-app-pane { spacing: 6px; }
+.orbit-launcher-category-footer {
+  spacing: 6px;
+  padding: 4px 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+.orbit-launcher-category-footer .orbit-launcher-power {
+  padding-top: 0;
+  border-top: none;
+}
+
+/* Arc */
+.orbit-launcher-arc { padding: 12px; }
+.orbit-launcher-arc .orbit-launcher-header { padding: 0; spacing: 14px; }
+.orbit-launcher-arc .orbit-launcher-body { spacing: 12px; }
+.orbit-launcher-arc .orbit-launcher-categories {
+  padding: 4px;
+  border-radius: 10px;
+  background-color: rgba(0, 0, 0, 0.14);
+}
+.orbit-launcher-arc .orbit-launcher-tile {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+.orbit-launcher-arc .orbit-launcher-tile:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Compact MATE-inspired menus */
+.orbit-launcher-mate-menu, .orbit-launcher-mate-columns { padding: 8px; }
+.orbit-launcher-mate-menu .orbit-launcher-search,
+.orbit-launcher-mate-columns .orbit-launcher-search { border-radius: 7px; }
+.orbit-launcher-mate-columns .orbit-launcher-categories {
+  padding: 4px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
+.orbit-launcher-mate-menu .orbit-launcher-category,
+.orbit-launcher-mate-menu .orbit-launcher-app,
+.orbit-launcher-mate-columns .orbit-launcher-category,
+.orbit-launcher-mate-columns .orbit-launcher-app { border-radius: 5px; }
+
+/* Plasma-inspired launcher */
+.orbit-launcher-plasma { padding: 14px; }
+.orbit-launcher-plasma .orbit-launcher-header { padding: 0; }
+.orbit-launcher-plasma .orbit-launcher-search { border-radius: 9px; padding: 8px 12px; }
+.orbit-launcher-plasma .orbit-launcher-body { spacing: 12px; }
+.orbit-launcher-plasma .orbit-launcher-categories {
+  padding: 6px;
+  border-radius: 9px;
+  background-color: rgba(255, 255, 255, 0.06);
+}
+.orbit-launcher-plasma .orbit-launcher-section-title { font-size: 1.15em; }
 
 /* Window previews shared by the standalone dock and integrated taskbar. */
 .orbit-preview-card { padding: 6px; spacing: 6px; }

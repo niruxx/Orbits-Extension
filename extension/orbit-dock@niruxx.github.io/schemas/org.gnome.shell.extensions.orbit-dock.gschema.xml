@@ -318,9 +318,9 @@
       <summary>App icon size in the taskbar</summary>
     </key>
     <key name="launcher-style" type="s">
-      <choices><choice value="modern"/><choice value="list"/><choice value="minimal"/><choice value="classic"/><choice value="arc"/><choice value="xp"/><choice value="grid"/><choice value="runner"/><choice value="sidebar"/></choices>
+      <choices><choice value="modern"/><choice value="list"/><choice value="minimal"/><choice value="classic"/><choice value="arc"/><choice value="xp"/><choice value="grid"/><choice value="runner"/><choice value="sidebar"/><choice value="mate-menu"/><choice value="mate-columns"/><choice value="plasma"/></choices>
       <default>'modern'</default>
-      <summary>modern = search, pinned grid, All apps; list = one A–Z list; minimal = compact search box; classic = categories beside the list; arc = categories beside an app grid; xp = Windows XP start menu</summary>
+      <summary>Application menu layout</summary>
     </key>
     <key name="top-bar-height" type="i">
       <range min="0" max="96"/>
@@ -614,7 +614,7 @@
     <!-- Launcher navigation and customization -->
     <key name="launcher-width" type="i"><range min="0" max="1400"/><default>0</default><summary>Menu width; zero uses the layout default</summary></key>
     <key name="launcher-height" type="i"><range min="0" max="1400"/><default>0</default><summary>Menu height; zero uses the layout default</summary></key>
-    <key name="launcher-columns" type="i"><range min="2" max="8"/><default>4</default><summary>Arc grid columns</summary></key>
+    <key name="launcher-columns" type="i"><range min="2" max="8"/><default>4</default><summary>Arc and Plasma grid columns</summary></key>
     <key name="launcher-grid-icon-size" type="i"><range min="24" max="96"/><default>48</default><summary>Grid icon size</summary></key>
     <key name="launcher-hover-delay" type="i"><range min="0" max="1000"/><default>160</default><summary>Category hover delay in milliseconds</summary></key>
     <key name="launcher-transition-time" type="i"><range min="0" max="400"/><default>120</default><summary>Selection transition time in milliseconds</summary></key>

@@ -60,7 +60,8 @@ export default class SmokeDriver extends Extension {
         settings.set_boolean('show-trash', true);
         settings.set_boolean('show-mounts', true);
         settings.set_boolean('fixed-icon-size', true);
-        settings.set_double('dock-length-limit', 0.4);
+        settings.set_int('icon-size', 96);
+        settings.set_double('dock-length-limit', 0.2);
         settings.set_string('dock-opacity-mode', 'dynamic');
         settings.set_boolean('indicator-dominant-color', true);
         settings.set_string('indicator-style', 'metro');
@@ -70,7 +71,18 @@ export default class SmokeDriver extends Extension {
     _second() {
         const dock = this._dock();
         this._assert(dock._places?.actor.get_children().length >= 1, 'Trash icon missing');
-        this._assert(dock._container.width <= 1280 * 0.4 + 2, 'Dock length limit was not respected');
+        this._assert(dock._container.width <= 1280 * 0.2 + 2, 'Dock length limit was not respected');
+        const scroll = dock._appScroll;
+        const adjustment = scroll.hadjustment;
+        this._assert(adjustment.upper > adjustment.page_size, 'Fixed-size dock overflow fixture did not overflow');
+        this._assert(!scroll.get_hscrollbar_visible() && !scroll.get_vscrollbar_visible(), 'Dock scrollbar is visible');
+        const wheel = {type: () => Clutter.EventType.SCROLL, get_flags: () => 0,
+            get_state: () => Clutter.ModifierType.SHIFT_MASK, get_scroll_direction: () => Clutter.ScrollDirection.DOWN};
+        this._assert(dock._onOverflowScroll(wheel) === Clutter.EVENT_STOP && adjustment.value > 0,
+            'Shift+wheel did not scroll the dock with hidden scrollbars');
+        this._assert(dock._onOverflowScroll({...wheel, get_state: () => 0}) === Clutter.EVENT_PROPAGATE,
+            'Overflow intercepted the regular dock wheel action');
+        adjustment.value = 0;
         this._later(250, () => {
             this._assert(dock._icons.values().next().value._dominantColor, 'Dominant icon color did not load');
         });
@@ -293,7 +305,9 @@ export default class SmokeDriver extends Extension {
             this._assert(this._manager._docks[0]._panel._context._getMenuItems().some(item => item.label?.text === 'Sign Out…'), 'Taskbar Sign Out action missing');
             const launcher = this._extension._launcher;
             launcher.open(); launcher._selectCategory('all');
-            this._assert(launcher._content.get_children().find(child => child.has_style_class_name('orbit-launcher-power'))?.get_children().some(button => button.accessible_name === 'Sign Out'), 'Launcher Sign Out action missing');
+            const footer = launcher._content.get_last_child();
+            const power = footer.get_children().find(child => child.has_style_class_name('orbit-launcher-power'));
+            this._assert(power?.get_children().some(button => button.accessible_name === 'Sign Out'), 'Launcher Sign Out action missing');
             this._later(300, () => {
                 const key = symbol => ({get_key_symbol: () => symbol, get_state: () => 0, get_key_unicode: () => ''});
                 launcher._onKeyPress(key(Clutter.KEY_Down));
@@ -354,23 +368,43 @@ export default class SmokeDriver extends Extension {
         settings.set_boolean('launcher-button-show-label', true); settings.set_string('launcher-button-label', 'Start Test');
         await pause(100);
         this._assert(this._manager._docks[0]._showAppsButton._orbitLabel === 'Start Test', 'Menu button label did not update live');
-        for (const style of ['modern', 'list', 'minimal', 'classic', 'arc', 'xp', 'grid', 'runner', 'sidebar']) {
-            settings.set_string('launcher-style', style); launcher.open(); launcher._selectCategory('favorites');
+        const menuStyles = ['modern', 'list', 'minimal', 'classic', 'arc', 'xp', 'grid', 'runner', 'sidebar',
+            'mate-menu', 'mate-columns', 'plasma'];
+        for (const style of menuStyles) {
+            this._assert(settings.set_string('launcher-style', style), `Schema rejected launcher style ${style}`);
+            launcher.open(); launcher._selectCategory('favorites');
             await pause(90);
             const custom = launcher._navigationButtons().find(item => item._orbitApp?._orbitCustom);
             this._assert(custom, `Custom pins missing in ${style}`);
             this._assert(launcher._catButtons.has('recent') || style === 'xp', `Recent view inaccessible in ${style}`);
-            if (['classic', 'arc', 'sidebar'].includes(style)) {
+            if (['classic', 'arc', 'sidebar', 'mate-menu', 'mate-columns', 'plasma'].includes(style)) {
+                if (style === 'mate-menu') launcher._categoryPicker.emit('clicked', 1);
                 this._assert([...launcher._catButtons.keys()][0] === 'all' && launcher._catButtons.has('Utility') && !launcher._catButtons.has('Game'), 'Category ordering/visibility failed');
                 const appCount = launcher._navigationButtons().length;
                 settings.set_strv('launcher-hidden-categories', ['Game', 'Utility']); await pause(70);
-                this._assert(!launcher._catButtons.has('Utility') && launcher._navigationButtons().length < appCount, 'Live category refresh failed');
+                this._assert(!launcher._catButtons.has('Utility') && launcher._navigationButtons().length < appCount,
+                    `Live category refresh failed in ${style}`);
                 settings.set_strv('launcher-hidden-categories', ['Game']); await pause(70);
+            }
+            if (style === 'mate-menu') {
+                this._assert(launcher._catScroll.visible && !launcher._appScroll.visible, 'MATE Menu did not open its category browser');
+                launcher._catButtons.get('favorites').emit('clicked', 1);
+                this._assert(!launcher._catScroll.visible && launcher._firstItem(), 'MATE Menu could not enter a category');
+            }
+            if (style === 'plasma') {
+                this._assert(launcher._firstItem()?.has_style_class_name('orbit-launcher-tile'), 'Plasma pinned grid missing');
+                launcher._catButtons.get('all').emit('clicked', 1);
+                this._assert(launcher._firstItem()?.has_style_class_name('orbit-launcher-app'), 'Plasma all-apps list missing');
             }
             const monitor = Main.layoutManager.monitors[launcher._monitorIndex];
             this._assert(Math.abs(launcher._menu.x - (monitor.width - launcher._menu.width) / 2) <= 1 && Math.abs(launcher._menu.y - (monitor.height - launcher._menu.height) / 2) <= 1, `Forced center placement failed in ${style}`);
+            if (style === 'mate-menu') launcher._categoryPicker.emit('clicked', 1);
             launcher._search.set_text('smoke folder'); await pause(40);
             this._assert(launcher._navigationButtons().some(item => item._orbitApp?._orbitCustom), `Shortcut search missing in ${style}`);
+            if (['arc', 'plasma', 'mate-columns'].includes(style)) {
+                launcher._catButtons.get('all').emit('clicked', 1);
+                this._assert(!launcher._search.get_text() && launcher._currentCategory === 'all', `Category click left stale search in ${style}`);
+            }
             launcher.close();
         }
         settings.set_string('launcher-style', 'arc'); settings.set_string('launcher-placement', 'automatic');

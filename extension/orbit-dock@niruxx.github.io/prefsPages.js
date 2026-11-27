@@ -290,8 +290,7 @@ export function launcherPage(window, settings) {
         r.combo('activities-action', 'Activities button'),
         r.combo('show-apps-action', 'Dock applications button'),
         r.switch('skip-startup-overview', 'Start on the desktop', 'Don\'t open the overview after logging in'),
-    ], 'A compact app menu with search, categories and favourites, similar to Plasma\'s application ' +
-       'launcher. Type to search, use the arrow keys and Enter, or Escape to close.');
+    ], 'Type to search, use the arrow keys and Enter to launch an app, or press Escape to close.');
     page.add(open);
     page.add(W.group('Appearance', [
         r.combo('launcher-style', 'Menu style'),
@@ -307,7 +306,7 @@ export function launcherPage(window, settings) {
         r.spin('launcher-font-size', 'Font size', 10, 24, 1),
         r.spin('launcher-width', 'Menu width', 0, 1400, 20, '0 uses the layout default; limited to the available screen'),
         r.spin('launcher-height', 'Menu height', 0, 1400, 20, '0 uses the layout default'),
-        r.spin('launcher-columns', 'Arc grid columns', 2, 8, 1),
+        r.spin('launcher-columns', 'Arc and Plasma grid columns', 2, 8, 1),
         r.spin('launcher-grid-icon-size', 'Grid icon size', 24, 96, 4),
         r.spin('launcher-hover-delay', 'Category hover delay', 0, 1000, 20, 'Milliseconds'),
         r.spin('launcher-transition-time', 'Highlight transition', 0, 400, 20, 'Milliseconds'),

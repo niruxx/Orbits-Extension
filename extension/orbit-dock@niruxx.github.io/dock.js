@@ -29,6 +29,7 @@ import {WindowSpread} from './windowSpread.js';
 import {dominantColor, dockVisible} from './dockModel.js';
 import {readPanelConfig} from './taskbarModel.js';
 import {TaskbarPanel, TaskbarMenus} from './taskbarPanel.js';
+import {scrollFromVerticalWheel} from './util.js';
 
 const LABEL_SHOW_DELAY = 300;
 const SCROLL_THROTTLE_MS = 250;
@@ -472,9 +473,10 @@ class Dock {
         if (this._showAppsButton && appsPos === 'start')
             this._background.add_child(this._showAppsButton);
         this._appScroll = new St.ScrollView({child: this._box,
-            hscrollbar_policy: this.horizontal ? St.PolicyType.AUTOMATIC : St.PolicyType.NEVER,
-            vscrollbar_policy: this.horizontal ? St.PolicyType.NEVER : St.PolicyType.AUTOMATIC,
+            hscrollbar_policy: this.horizontal ? St.PolicyType.EXTERNAL : St.PolicyType.NEVER,
+            vscrollbar_policy: this.horizontal ? St.PolicyType.NEVER : St.PolicyType.EXTERNAL,
             overlay_scrollbars: true});
+        this._appScroll.connect('captured-event', (_scroll, event) => this._onOverflowScroll(event));
         this._background.add_child(this._appScroll);
         if (this._showAppsButton && appsPos === 'after-favorites')
             this._box.add_child(this._showAppsButton);
@@ -1427,6 +1429,32 @@ class Dock {
         const dir = this._scrollDirection(event);
         if (dir && this._throttleScroll())
             this._cycle(icon.app, dir);
+        return Clutter.EVENT_STOP;
+    }
+
+    _onOverflowScroll(event) {
+        if (event.type() !== Clutter.EventType.SCROLL)
+            return Clutter.EVENT_PROPAGATE;
+        const adjustment = this.horizontal ? this._appScroll.hadjustment : this._appScroll.vadjustment;
+        if (this.config.scrollAction === 'none' || event.get_state() & Clutter.ModifierType.SHIFT_MASK) {
+            const result = scrollFromVerticalWheel(adjustment, event);
+            if (result === Clutter.EVENT_STOP) return result;
+        }
+        if (!this.horizontal || adjustment.upper - adjustment.lower <= adjustment.page_size ||
+            event.get_flags() & Clutter.EventFlags.POINTER_EMULATED)
+            return Clutter.EVENT_PROPAGATE;
+        const direction = event.get_scroll_direction();
+        let delta = 0;
+        if (direction === Clutter.ScrollDirection.SMOOTH) {
+            const [dx, dy] = event.get_scroll_delta();
+            if (Math.abs(dx) > Math.abs(dy)) delta = dx;
+        } else if (direction === Clutter.ScrollDirection.LEFT)
+            delta = -1;
+        else if (direction === Clutter.ScrollDirection.RIGHT)
+            delta = 1;
+        if (!delta) return Clutter.EVENT_PROPAGATE;
+        if (this._appScroll.get_text_direction() === Clutter.TextDirection.RTL) delta *= -1;
+        adjustment.adjust_for_scroll_event(delta);
         return Clutter.EVENT_STOP;
     }
 
