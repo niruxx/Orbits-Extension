@@ -72,7 +72,7 @@ export function dockVisible(state) {
         return !!state.manualVisible;
     if (state.fullscreen)
         return !!(state.hover || state.edge);
-    if (state.mode === 'fixed' || state.overview || state.dragging || state.hover || state.edge)
+    if (state.mode === 'fixed' || state.dragging || state.hover || state.edge)
         return true;
     return state.mode === 'intellihide' && !state.overlap;
 }

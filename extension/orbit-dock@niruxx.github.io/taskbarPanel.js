@@ -19,7 +19,7 @@ import {isWindowMaximized, parseHexColor} from './util.js';
 export class TaskbarMenus {
     constructor() { this._leases = new Map(); }
     toggle(menu, source, dock) {
-        if (!menu || !source.mapped) return;
+        if (!menu || !source.mapped || Main.overview.visible) return;
         const lease = this._leases.get(menu);
         if (menu.isOpen) {
             menu.close();
@@ -77,7 +77,7 @@ export class TaskbarPanel {
         Main.ctrlAltTabManager.addGroup(this.body, `Taskbar ${dock.monitorIndex + 1}`, 'view-dual-symbolic', {
             sortGroup: CtrlAltTab.SortGroup.TOP,
             focusCallback: () => {
-                if (dock._fullscreen() && !dock.config.fullscreenReveal) return;
+                if (Main.overview.visible || dock._fullscreen() && !dock.config.fullscreenReveal) return;
                 dock.revealFor(); dock._applyTranslation(true, false);
                 this.body.navigate_focus(null, St.DirectionType.TAB_FORWARD, false);
             },
@@ -346,9 +346,13 @@ export class TaskbarPanel {
         }
         return action === 'none' ? Clutter.EVENT_PROPAGATE : Clutter.EVENT_STOP;
     }
+    closeMenus() {
+        this.dock._manager.panelMenus.closeFor(this.dock);
+        this.menuManager.activeMenu?.close();
+    }
     destroy() {
         this._destroyed = true;
-        this.dock._manager.panelMenus.closeFor(this.dock);
+        this.closeMenus();
         GLib.source_remove(this._timer);
         if (this._clickTimer) GLib.source_remove(this._clickTimer);
         if (this._clockSignal) Main.panel.statusArea.dateMenu._clockDisplay.disconnect(this._clockSignal);

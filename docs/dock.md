@@ -24,6 +24,7 @@ Configure a floating or edge-to-edge dock under **Dock**. For an integrated bott
   apps button to unpin. Right-click gives the standard GNOME app menu.
 - Icons shrink automatically when the dock is full, or stay fixed with scrollable overflow
 - Use Shift+scroll or a horizontal trackpad gesture to reach overflow on the horizontal dock
+- The dock hides while Activities is open and can appear as a drop target when you drag an app.
 - Maximum dock length as a percentage of the available screen edge
 - Fixed or dynamic dock opacity, with independent idle and near-window opacity
 - Dots, squares, dashes, segmented, solid and Metro indicators; thickness, focused/unfocused

@@ -25,6 +25,8 @@ of **Follow Top Bar position** preserves existing layout presets. Panel appearan
 Top Bar colour, opacity, floating and glass settings. Fixed panels reserve space; autohide
 and intelligent hiding move the entire panel, including the clock and tray. Hiding respects
 window filters, open menus, keyboard focus and the fullscreen reveal policy.
+Taskbars hide while Activities is open and return to their usual visibility
+when you leave. Fixed taskbars keep their desktop space reserved during the transition.
 
 **Panel Elements** lets you reorder or hide the applications button, overview, app buttons,
 focused-app button, places, flexible spaces, tray, clock, system controls and Show Desktop.

@@ -139,7 +139,7 @@ export default class AcceptanceSmoke extends Extension {
         this._assert(fixtureWindow.is_fullscreen(),'Fullscreen transition failed');
         const fullscreenDock=ext._parts[0]._docks.find(dock=>dock.monitorIndex===fixtureWindow.get_monitor());this._assert(!fullscreenDock._shown,'Taskbar did not hide for fullscreen deny policy');
         fixtureWindow.unmake_fullscreen();await this._wait(400);
-        launcher.open();await this._wait();Main.overview.show();await this._wait(600);this._assert(!launcher.isOpen,'Overview transition left launcher modal open');Main.overview.hide();await this._wait(600);
+        await this._checkOverview(ext);
         // This exercises Shell mode changes, not a physical authenticated lock.
         const tray=ext._tray;
         this._indicator=Gio.DBusExportedObject.wrapJSObject('<node><interface name="org.kde.StatusNotifierItem"><property name="Id" type="s" access="read"/><property name="Title" type="s" access="read"/><property name="Status" type="s" access="read"/><property name="IconName" type="s" access="read"/><property name="Menu" type="o" access="read"/><property name="ItemIsMenu" type="b" access="read"/></interface></node>',{Id:'acceptance',Title:'Acceptance indicator',Status:'Active',IconName:'utilities-terminal-symbolic',Menu:'/',ItemIsMenu:false});
@@ -185,6 +185,71 @@ export default class AcceptanceSmoke extends Extension {
         this._probe.destroy();this._probe=null;this._fixture.force_exit();this._fixture=null;
         const result = `PASS: Virtual keyboard/touch, focus restore, RTL long text, mixed scaling/rotation and virtual output removal/restoration, fullscreen/overview, session-mode round trip and ${cycles} lifecycle/settings cycles with timer/signal/keybinding cleanup`;
         this._write([result, ...profile].join('\n'));
+    }
+
+    async _checkOverview(extension) {
+        const settings = extension._settings;
+        const docks = () => extension._parts[0]._docks;
+        const showApps = () => Main.overview.showApps();
+        const enter = async open => {
+            open();
+            await this._wait(450);
+            this._assert(Main.overview.visibleTarget, 'Overview did not open');
+        };
+        const leave = async () => {
+            Main.overview.hide();
+            await this._wait(450);
+            this._assert(!Main.overview.visible, 'Overview did not close');
+        };
+        const workAreas = () => Main.layoutManager.monitors.map(monitor => {
+            const {x, y, width, height} = Main.layoutManager.getWorkAreaForMonitor(monitor.index);
+            return [x, y, width, height];
+        }).flat().join(',');
+        const isClear = dock => {
+            const [x, y] = dock._slider.get_transformed_position();
+            const [width, height] = dock._slider.get_transformed_size();
+            const [frameX, frameY] = dock._container.get_transformed_position();
+            const [frameWidth, frameHeight] = dock._container.get_transformed_size();
+            return !dock._slider.mapped || dock._container.clip_to_allocation &&
+                (x >= frameX + frameWidth - 1 || x + width <= frameX + 1 ||
+                 y >= frameY + frameHeight - 1 || y + height <= frameY + 1);
+        };
+        settings.set_string('taskbar-position', 'bottom');
+        settings.set_string('taskbar-mode', 'fixed');
+        await this._wait(250);
+        const desktopWorkAreas = workAreas();
+        extension._launcher.open();
+        await this._wait();
+        await enter(() => Main.overview.show());
+        this._assert(!extension._launcher.isOpen, 'Overview transition left launcher modal open');
+        this._assert(docks().every(isClear), 'A bottom taskbar covers the workspace overview');
+        this._assert(workAreas() === desktopWorkAreas, 'Entering the overview changed desktop work areas');
+        docks().forEach(dock => dock.revealFor());
+        await this._wait(150);
+        this._assert(docks().every(isClear), 'A reveal shortcut surfaced a taskbar over the overview');
+        await leave();
+        this._assert(docks().every(dock => dock._shown && !isClear(dock)), 'Fixed taskbars did not return after the overview');
+
+        settings.set_boolean('dock-in-panel', false);
+        settings.set_string('top-bar-position', 'top');
+        settings.set_string('dock-position', 'bottom');
+        settings.set_string('dock-mode', 'fixed');
+        settings.set_boolean('hide-overview-dash', false);
+        await this._wait(250);
+        await enter(showApps);
+        this._assert(Main.overview.dash.visible && docks().every(isClear),
+            'The standalone dock covers the applications grid or stock dash');
+        Main.overview.beginItemDrag(Main.overview.dash.showAppsButton);
+        await this._wait(250);
+        this._assert(docks().every(dock => dock._shown && !isClear(dock)), 'The standalone dock is unavailable for app drops');
+        Main.overview.endItemDrag(Main.overview.dash.showAppsButton);
+        await this._wait(250);
+        this._assert(docks().every(isClear), 'App drag left the standalone dock over the applications grid');
+        await leave();
+        this._assert(docks().every(dock => dock._shown && !isClear(dock)), 'Fixed docks did not return after the overview');
+        settings.set_boolean('hide-overview-dash', true);
+        settings.set_boolean('dock-in-panel', true);
+        await this._wait(250);
     }
 
     async _checkLauncherScrollAndHover(launcher) {

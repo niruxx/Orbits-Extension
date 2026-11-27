@@ -159,7 +159,7 @@ export function dockPage(window, settings) {
         r.switch('reveal-urgent', 'Reveal for urgent apps'),
         r.spin('hide-delay', 'Hide delay', 0, 5000, 50, 'Milliseconds'),
         r.spin('animation-time', 'Animation duration', 0, 2000, 25, 'Milliseconds'),
-        r.switch('hide-overview-dash', 'Hide the overview dash', 'Replace the Activities dash with the dock'),
+        r.switch('hide-overview-dash', 'Hide the GNOME dash in Activities'),
     ]));
     page.add(W.group('Content', [
         r.switch('show-favorites', 'Show pinned apps'),

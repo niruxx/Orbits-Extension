@@ -692,7 +692,13 @@ class Dock {
         global.get_window_actors().forEach(actor => this._trackWindow(actor.meta_window));
 
         Main.overview.connectObject(
-            'showing', () => { this._previews.close(); this._spread.close(); this._updateVisibility(); },
+            'showing', () => {
+                this._previews.close();
+                this._spread.close();
+                this._hideLabel();
+                this._panel?.closeMenus();
+                this._updateVisibility();
+            },
             'hidden', () => this._updateVisibility(),
             'item-drag-begin', () => {
                 this._dragging = true;
@@ -744,7 +750,7 @@ class Dock {
 
         this._pressureBarrier = new Layout.PressureBarrier(
             Math.max(this.config.pressure, 1), 1000,
-            Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW);
+            Shell.ActionMode.NORMAL);
         this._pressureBarrier.connect('trigger', () => {
             if (this._edgeRevealId || !this.config.fullscreenReveal && this._fullscreen())
                 return;
@@ -1169,12 +1175,16 @@ class Dock {
         });
     }
 
+    _overviewHidesDock() {
+        return Main.overview.visible && (this.inPanel || !this._dragging);
+    }
+
     _shouldShow() {
         const focus = global.stage.get_key_focus();
         return dockVisible({mode: this.config.mode, fullscreen: this._fullscreen(),
             fullscreenReveal: this.config.fullscreenReveal, forced: this._forcedReveal,
             menu: this._menusOpen > 0 || !!(focus && this._container.contains(focus)) || !!(this._manager.launcher?._root && this._manager.launcher._monitorIndex === this.monitorIndex), preview: this._previewOpen, manualVisible: this._manualVisible,
-            overview: Main.overview.visibleTarget, dragging: this._dragging,
+            dragging: this._dragging,
             hover: this._slider.hover, edge: this._pointerRevealed,
             overlap: this.config.mode === 'intellihide' && this._windowsOverlapDock()});
     }
@@ -1188,12 +1198,17 @@ class Dock {
                 this._background.set_style(this._backgroundStyle());
             }
         }
-        const show = this._shouldShow();
+        // Clip the slider out of the overview while keeping the outer
+        // container in place so fixed bars retain their desktop struts.
+        const hiddenForOverview = this._overviewHidesDock();
+        const overviewChanged = hiddenForOverview !== this._hiddenForOverview;
+        this._hiddenForOverview = hiddenForOverview;
+        const show = !hiddenForOverview && this._shouldShow();
         this._container.clip_to_allocation = !show;
-        if (show === this._shown)
+        if (show === this._shown && !overviewChanged)
             return;
         this._shown = show;
-        this._applyTranslation(show, animate);
+        this._applyTranslation(show, animate && !hiddenForOverview);
     }
 
     _applyTranslation(show, animate) {
@@ -1574,8 +1589,14 @@ export class DockManager {
         this._panelSource = index => {
             const dock = this._docks.find(item => item.inPanel && item.monitorIndex === index);
             const allowed = dock && (!dock._fullscreen() || dock.config.fullscreenReveal);
-            if (allowed) { dock.revealFor(); dock._applyTranslation(true, false); }
-            return allowed && dock._showAppsButton?.mapped ? dock._showAppsButton : dock?._panel.actor;
+            if (allowed) {
+                dock.revealFor();
+                if (!dock._overviewHidesDock()) {
+                    dock._applyTranslation(true, false);
+                    if (dock._showAppsButton?.mapped) return dock._showAppsButton;
+                }
+            }
+            return dock?._panel.actor;
         };
         if (launcher) { launcher._taskbarSource = this._panelSource; launcher._taskbarChanged = this._panelChanged; }
         this.tray = tray;
